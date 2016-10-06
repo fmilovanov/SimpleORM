@@ -7,8 +7,7 @@ abstract class Model
 {
     private $__is_search_pattern    = false;
 
-    protected $_data                = [];
-    protected $_defaults            = [];
+    protected $_data                = array();
 
     public function setSearchPattern()
     {
@@ -27,6 +26,11 @@ abstract class Model
 
     public function __construct($data = null)
     {
+        if (!isset(static::$__defaults))
+            throw new \Exception('No defaults defined');
+
+        $this->_data = static::$__defaults;
+
         if (is_array($data))
         {
             if (false)
@@ -35,7 +39,9 @@ abstract class Model
             }
             else
             {
-                $this->_data = $this->_defaults;
+                if (array_key_exists('id', $data))
+                    $this->setId($data['id']);
+
                 foreach ($this->getMapper()->getColumns() as $key => $method)
                 {
                     if (array_key_exists($key, $data))
@@ -46,29 +52,32 @@ abstract class Model
                 }
             }
         }
-        elseif ($data == true)
+        elseif ($data == false)
         {
             $this->__is_search_pattern = true;
-            $this->_data = $this->_defaults;
             foreach ($this->_data as $key => $_)
                 $this->_data[$key] = null;
         }
-        elseif (is_null($data))
-        {
-            $this->_data = $this->_defaults;
-        }
-        else
+        elseif (!is_null($data))
         {
             throw new \InvalidArgumentException();
         }
     }
 
-    /**
-     * @return \Mapper
-     */
     public function getMapper()
     {
+        $class = get_class($this);
+        if (preg_match('/\\Model\\/', $class))
+            $class = str_replace('\\Model\\', '\\Mapper\\', $class);
+        else
+            throw new \Exception('Cannot determine mapper name');
 
+        return $class::getInstance();
+    }
+
+    public function toArray()
+    {
+        return $this->_data;
     }
 
     // some getters/setters
