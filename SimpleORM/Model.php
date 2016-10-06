@@ -52,7 +52,7 @@ abstract class Model
                 }
             }
         }
-        elseif ($data == false)
+        elseif ($data === false)
         {
             $this->__is_search_pattern = true;
             foreach ($this->_data as $key => $_)
@@ -64,11 +64,15 @@ abstract class Model
         }
     }
 
+    /**
+     * @return Mapper
+     * @throws \Exception
+     */
     public function getMapper()
     {
         $class = get_class($this);
-        if (preg_match('/\\Model\\/', $class))
-            $class = str_replace('\\Model\\', '\\Mapper\\', $class);
+        if (preg_match('/^Model_/', $class))
+            $class = preg_replace('/^Model_/', 'Mapper_', $class);
         else
             throw new \Exception('Cannot determine mapper name');
 
@@ -78,6 +82,21 @@ abstract class Model
     public function toArray()
     {
         return $this->_data;
+    }
+
+    public final function save()
+    {
+        return $this->getMapper()->save($this);
+    }
+
+    public final function search()
+    {
+        return $this->getMapper()->search($this);
+    }
+
+    public function delete($head = false)
+    {
+        $this->getMapper()->delete($this);
     }
 
     // some getters/setters
