@@ -23,7 +23,6 @@ abstract class Mapper
             static::$__instances[$cname] = new $cname();
         }
 
-        print_r(static::$__instances);
         return static::$__instances[$cname];
     }
 
