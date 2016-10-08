@@ -4,7 +4,7 @@
  */
 require_once(dirname(__DIR__) . '/SimpleORM/Model.php');
 require_once(dirname(__DIR__) . '/SimpleORM/Mapper.php');
-require_once(dirname(__DIR__) . '/SimpleORM/IDatabase.php');
+require_once(dirname(__DIR__) . '/SimpleORM/IDbAdapter.php');
 
 
 abstract class Test_Abstract extends PHPUnit_Framework_TestCase
