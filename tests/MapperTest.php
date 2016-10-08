@@ -57,9 +57,9 @@ class TestAdapter implements IDbAdapter
         return $this->count++;
     }
 
-    public function startTransaction() { }
-    public function commtTransaction() { }
-    public function rollbackTransaction() { }
+    public function beginTransaction() { }
+    public function commit() { }
+    public function rollback() { }
 }
 
 class Test_Mapper extends Test_Abstract
