@@ -11,7 +11,7 @@ Interface IDbAdapter
 
     public function lastInsertId();
 
-    public function startTransaction();
-    public function commtTransaction();
-    public function rollbackTransaction();
+    public function beginTransaction();
+    public function commit();
+    public function rollBack();
 }
