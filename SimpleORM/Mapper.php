@@ -71,6 +71,9 @@ abstract class Mapper
 
     public function save(\Model $model)
     {
+        if (method_exists($model, 'validate'))
+            $model->validate();
+
         $data = array();
         foreach ($this->getColumns() as $key => $method)
         {
@@ -91,7 +94,7 @@ abstract class Mapper
                     break;
 
                 default:
-                    $data[$key] = $model->$method();
+                    $data[$key] = $model->$getter();
             }
         }
 
