@@ -31,7 +31,7 @@ class DbSelect
 
     public function __construct($table)
     {
-        if (!is_string($table))
+        if (!is_string($table) || !preg_match('/^[a-z]/i', $table))
             throw new Exception(self::ERROR_TABLE);
 
         $this->_table = $table;
@@ -83,7 +83,7 @@ class DbSelect
     {
         $index = count($this->_where) - 1;
         if ($index < 0)
-            throw new \Exception();
+            throw new \Exception(self::ERROR_WHERE_OR);
 
         $this->_where[$index][] = $this->_where($key, $value);
     }
@@ -92,4 +92,72 @@ class DbSelect
     {
         return $this->_where;
     }
+
+    /**
+     *
+     * @param string $operator
+     * @param string|array $value
+     * @param string $value2
+     * @return \DbWhereCond
+     */
+    public static function cond($operator, $value, $value2 = null)
+    {
+        $cond = new \DbWhereCond();
+        $cond->operator = $operator;
+        $cond->val1 = $value;
+        $cond->val2 = $value2;
+
+        return $cond;
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function lt($value)
+    {
+        return self::cond(self::OPERATOR_LT, $value);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function lte($value)
+    {
+        return self::cond(self::OPERATOR_LTE, $value);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function gt($value)
+    {
+        return self::cond(self::OPERATOR_GT, $value);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function gte($value)
+    {
+        return self::cond(self::OPERATOR_GTE, $value);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function in($value)
+    {
+        $args = func_get_args();
+        if ((count($args) == 1) && (is_array($args[0])))
+            $args = $args[0];
+
+        return self::cond(self::OPERATOR_IN, $args);
+    }
+
+
 }
