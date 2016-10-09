@@ -30,7 +30,7 @@ class DbSql implements IDbAdapter
         foreach ($data as $key => $value)
         {
             if (!is_null($value) && !is_scalar($value))
-                throw new Exception($key . ' is not scalar');
+                throw new \Exception($key . ' is not scalar');
 
             $SQLStr .= ', `' . $key . "` = :c$i";
             $params[":c$i"] = $value;
@@ -61,8 +61,32 @@ class DbSql implements IDbAdapter
             $this->_throw($stmt, $SQLStr, $params);
     }
 
-    public function update($table, array $data, array $where) {
-        ;
+    public function update($table, array $data, array $where)
+    {
+        if (empty($data))
+            throw new \Exception('No data');
+
+        if (empty($where))
+            throw new \Exception('No where clause');
+
+        $params = array();
+        $SQLStr = "UPDATE `$table` SET " . $this->_prepareSetClause($data, $params) . ' WHERE';
+
+        $i = 0;
+        foreach ($where as $key => $value)
+        {
+            if (!is_scalar($value))
+                throw new \Exception($key . ' in where is not scalar');
+
+            $SQLStr .= " `$key` = :w$i AND";
+            $params[":w$i"] = $value;
+            $i += 1;
+        }
+
+        $SQLStr = substr($SQLStr, 0, strlen($SQLStr) - 4);
+        $stmt = $this->getAdapter()->prepare($SQLStr);
+        if (!$stmt->execute($params))
+            $this->_throw($stmt, $SQLStr, $params);
     }
 
     public function lastInsertId() {

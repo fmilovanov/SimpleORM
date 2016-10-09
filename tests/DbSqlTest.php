@@ -161,4 +161,64 @@ class Test_DbSql extends Test_Abstract
         }
     }
 
+    public function testUpdate()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $this->assertCount(0, $pdo->statements);
+
+        $id = rand(10, 99);
+        $table = $this->randValue();
+        $data = array('x1' => $this->randValue(), 'x2' => $this->randValue());
+
+        // try update
+        $adapter->update($table, $data, array('id' => $id));
+        $this->assertCount(1, $pdo->statements);
+        $this->assertTrue($pdo->statements[0] instanceof MySTMT);
+
+        $stmt = $pdo->statements[0];
+        $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $stmt->sql);
+        $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id), $stmt->params);
+
+        // more in where clause
+        $id2 = rand(100, 999);
+        $adapter->update($table, $data, array('id' => $id, 'id2' => $id2));
+        $this->assertCount(2, $pdo->statements);
+        $this->assertTrue($pdo->statements[1] instanceof MySTMT);
+
+        $stmt = $pdo->statements[1];
+        $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0 AND `id2` = :w1", $stmt->sql);
+        $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id, ':w1' => $id2),
+                            $stmt->params);
+
+        // try failure
+        $pdo->error = array(rand(10, 90), rand(100, 999), $this->randValue());
+        try
+        {
+            $adapter->update($table, $data, array('id' => $id));
+            $this->fail();
+        }
+        catch (\DbException $e)
+        {
+            $this->assertEquals($pdo->error[1], $e->getCode());
+            $this->assertEquals($pdo->error[2], $e->getMessage());
+            $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $e->getSQL());
+            $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id), $e->getParams());
+
+            // check that is was executed same way
+            $this->assertCount(3, $pdo->statements);
+            $this->assertTrue($pdo->statements[1] instanceof MySTMT);
+
+            $stmt = $pdo->statements[2];
+            $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $stmt->sql);
+            $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id), $stmt->params);
+        }
+
+
+
+
+
+
+    }
+
 }
