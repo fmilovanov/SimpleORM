@@ -5,6 +5,10 @@
 
 class DbSql implements IDbAdapter
 {
+    const ERROR_DATA            = 'No data';
+    const ERROR_WHERE           = 'No where';
+    const ERROR_KEY_NOT_SCALAR  = '`%s` is not scalar';
+
     private $_adapter;
 
 
@@ -30,7 +34,7 @@ class DbSql implements IDbAdapter
         foreach ($data as $key => $value)
         {
             if (!is_null($value) && !is_scalar($value))
-                throw new \Exception($key . ' is not scalar');
+                throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $key));
 
             $SQLStr .= ', `' . $key . "` = :c$i";
             $params[":c$i"] = $value;
@@ -51,7 +55,7 @@ class DbSql implements IDbAdapter
     public function insert($table, array $data)
     {
         if (empty($data))
-            throw new Exception('No data');
+            throw new Exception(self::ERROR_DATA);
 
         $params = array();
         $SQLStr = 'INSERT INTO `' . $table . '` SET ' . $this->_prepareSetClause($data, $params);
@@ -64,10 +68,10 @@ class DbSql implements IDbAdapter
     public function update($table, array $data, array $where)
     {
         if (empty($data))
-            throw new \Exception('No data');
+            throw new \Exception(self::ERROR_DATA);
 
         if (empty($where))
-            throw new \Exception('No where clause');
+            throw new \Exception(self::ERROR_WHERE);
 
         $params = array();
         $SQLStr = "UPDATE `$table` SET " . $this->_prepareSetClause($data, $params) . ' WHERE';

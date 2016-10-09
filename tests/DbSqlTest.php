@@ -137,7 +137,29 @@ class Test_DbSql extends Test_Abstract
         $this->assertEquals("INSERT INTO `$table` SET `x1` = :c0, `x2` = :c1", $stmt->sql);
         $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2']), $stmt->params);
 
-        // try failure
+        // try empty insert
+        try
+        {
+            $adapter->insert($table, array());
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSql::ERROR_DATA, $e->getMessage());
+        }
+
+        // try non-scalar value
+        try
+        {
+            $adapter->insert($table, array($fname = $this->randValue() => array()));
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $fname), $e->getMessage());
+        }
+
+        // try driver failure
         $pdo->error = array(rand(10, 90), rand(100, 999), $this->randValue());
         try
         {
@@ -191,7 +213,40 @@ class Test_DbSql extends Test_Abstract
         $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id, ':w1' => $id2),
                             $stmt->params);
 
-        // try failure
+        // try empty update
+        try
+        {
+            $adapter->update($table, array(), array('id' => 1));
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSql::ERROR_DATA, $e->getMessage());
+        }
+
+        // try empty where
+        try
+        {
+            $adapter->update($table, $data, array());
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSql::ERROR_WHERE, $e->getMessage());
+        }
+
+        // try non-scalar value
+        try
+        {
+            $adapter->update($table, array($fname = $this->randValue() => array()), array('id' => $id));
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $fname), $e->getMessage());
+        }
+
+        // try driver failure
         $pdo->error = array(rand(10, 90), rand(100, 999), $this->randValue());
         try
         {
