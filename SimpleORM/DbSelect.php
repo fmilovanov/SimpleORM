@@ -29,9 +29,11 @@ class DbSelect
     const ERROR_NOT_SCALAR  = 'not a scalar';
     const ERROR_WHERE       = 'unknown where';
     const ERROR_WHERE_OR    = 'no where to add to or';
+    const ERROR_ORDER       = 'bad order';
 
     private $_table;
     private $_where = array();
+    private $_order;
 
     public function __construct($table)
     {
@@ -95,6 +97,15 @@ class DbSelect
     public function getWhere()
     {
         return $this->_where;
+    }
+
+    public function getOrder() { return $this->_order; }
+    public function setOrder($val)
+    {
+        if (!is_string($val) && !is_null($val))
+            throw new \Exception(self::ERROR_ORDER);
+        $this->_order = $val;
+        return $this;
     }
 
     /**

@@ -4,6 +4,7 @@
  */
 require_once(dirname(__DIR__) . '/SimpleORM/Model.php');
 require_once(dirname(__DIR__) . '/SimpleORM/Mapper.php');
+require_once(dirname(__DIR__) . '/SimpleORM/DbSelect.php');
 require_once(dirname(__DIR__) . '/SimpleORM/IDbAdapter.php');
 
 

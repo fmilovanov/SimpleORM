@@ -7,88 +7,14 @@ require_once(dirname(__DIR__) . '/SimpleORM/DbSql.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbSelect.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbException.php');
 
-class MySTMT
-{
-    public $sql;
-    public $params;
-    public $error;
-    public $fetch_all;
-
-    public function __construct($sql, $error = null)
-    {
-        $this->sql = $sql;
-        $this->error = $error;
-    }
-
-    public function execute($params = array())
-    {
-        $this->params = $params;
-        return $this->error ? false : true;
-    }
-
-    public function errorCode()
-    {
-        return $this->error ? $this->error[0] : null;
-    }
-
-    public function errorInfo()
-    {
-        return $this->error;
-    }
-
-    public function fetchAll($type)
-    {
-        $this->fetch_all = $type;
-    }
-}
-
-class MyPDO extends PDO
-{
-    public $error;
-
-
-    public $begin_transaction = 0;
-    public $commit = 0;
-    public $rollback = 0;
-
-    public $statements = array();
-
-    public function __construct()
-    {
-    }
-
-    public function beginTransaction()
-    {
-        $this->begin_transaction += 1;
-    }
-
-    public function commit()
-    {
-        $this->commit += 1;
-    }
-
-    public function rollBack()
-    {
-        $this->rollback += 1;
-    }
-
-    /**
-     * @param string $statement
-     * @return \MySTMT
-     */
-    public function prepare($statement)
-    {
-        $stmt = $this->statements[] = new MySTMT($statement, $this->error);
-        return $stmt;
-    }
-
-}
+require_once(__DIR__ . '/mocks/TestSTMT.php');
+require_once(__DIR__ . '/mocks/TestPDO.php');
 
 class Test_DbSql extends Test_Abstract
 {
     public function testStartStransaction()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $this->assertEquals(0, $pdo->begin_transaction);
 
         $adapter = new DbSql($pdo);
@@ -103,7 +29,7 @@ class Test_DbSql extends Test_Abstract
 
     public function testCommit()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $this->assertEquals(0, $pdo->commit);
 
         $adapter = new DbSql($pdo);
@@ -118,7 +44,7 @@ class Test_DbSql extends Test_Abstract
 
     public function testRollBack()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $this->assertEquals(0, $pdo->rollback);
 
         $adapter = new DbSql($pdo);
@@ -133,7 +59,7 @@ class Test_DbSql extends Test_Abstract
 
     public function testInsert()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $this->assertCount(0, $pdo->statements);
 
@@ -143,7 +69,7 @@ class Test_DbSql extends Test_Abstract
         // try insert
         $adapter->insert($table, $data);
         $this->assertCount(1, $pdo->statements);
-        $this->assertTrue($pdo->statements[0] instanceof MySTMT);
+        $this->assertTrue($pdo->statements[0] instanceof TestSTMT);
 
         $stmt = $pdo->statements[0];
         $this->assertEquals("INSERT INTO `$table` SET `x1` = :c0, `x2` = :c1", $stmt->sql);
@@ -187,7 +113,7 @@ class Test_DbSql extends Test_Abstract
 
             // check that is was executed same way
             $this->assertCount(2, $pdo->statements);
-            $this->assertTrue($pdo->statements[1] instanceof MySTMT);
+            $this->assertTrue($pdo->statements[1] instanceof TestSTMT);
 
             $stmt = $pdo->statements[1];
             $this->assertEquals("INSERT INTO `$table` SET `x1` = :c0, `x2` = :c1", $stmt->sql);
@@ -197,7 +123,7 @@ class Test_DbSql extends Test_Abstract
 
     public function testUpdate()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $this->assertCount(0, $pdo->statements);
 
@@ -208,7 +134,7 @@ class Test_DbSql extends Test_Abstract
         // try update
         $adapter->update($table, $data, array('id' => $id));
         $this->assertCount(1, $pdo->statements);
-        $this->assertTrue($pdo->statements[0] instanceof MySTMT);
+        $this->assertTrue($pdo->statements[0] instanceof TestSTMT);
 
         $stmt = $pdo->statements[0];
         $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $stmt->sql);
@@ -218,7 +144,7 @@ class Test_DbSql extends Test_Abstract
         $id2 = rand(100, 999);
         $adapter->update($table, $data, array('id' => $id, 'id2' => $id2));
         $this->assertCount(2, $pdo->statements);
-        $this->assertTrue($pdo->statements[1] instanceof MySTMT);
+        $this->assertTrue($pdo->statements[1] instanceof TestSTMT);
 
         $stmt = $pdo->statements[1];
         $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0 AND `id2` = :w1", $stmt->sql);
@@ -274,7 +200,7 @@ class Test_DbSql extends Test_Abstract
 
             // check that is was executed same way
             $this->assertCount(3, $pdo->statements);
-            $this->assertTrue($pdo->statements[1] instanceof MySTMT);
+            $this->assertTrue($pdo->statements[1] instanceof TestSTMT);
 
             $stmt = $pdo->statements[2];
             $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $stmt->sql);
@@ -284,12 +210,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryEq()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), $v1 = rand(100, 199));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -297,7 +223,7 @@ class Test_DbSql extends Test_Abstract
         // add via class
         $select->where($k2 = 'key' . rand(20, 29), \DbSelect::eq($v2 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0 AND `$k2` = :w1", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -305,7 +231,7 @@ class Test_DbSql extends Test_Abstract
         // add NULL
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::eq(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0 AND `$k2` = :w1 AND `$k3` IS NULL", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -325,12 +251,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryNe()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::ne($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` != :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -338,7 +264,7 @@ class Test_DbSql extends Test_Abstract
         // add NULL
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::ne(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` != :w0 AND `$k3` IS NOT NULL", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -358,12 +284,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryLt()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::lt($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` < :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -383,12 +309,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryLte()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::lte($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` <= :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -408,12 +334,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryGt()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::gt($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` > :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -433,12 +359,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryGte()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::gte($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` >= :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -458,12 +384,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryLike()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::like($v1 = rand(100, 199)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` LIKE :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -483,12 +409,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryIn()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), array($v11 = rand(100, 199), $v12 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -496,7 +422,7 @@ class Test_DbSql extends Test_Abstract
         // add via class
         $select->where($k2 = 'key' . rand(20, 29), \DbSelect::in($v21 = rand(300, 399), $v22 = rand(400, 499)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -504,7 +430,7 @@ class Test_DbSql extends Test_Abstract
         // add empty array
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::in());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL",
                             $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
@@ -513,7 +439,7 @@ class Test_DbSql extends Test_Abstract
         // add array with NULL only
         $select->where($k4 = 'key' . rand(40, 49), \DbSelect::in(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL" .
                             " AND `$k4` IS NULL", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
@@ -522,7 +448,7 @@ class Test_DbSql extends Test_Abstract
         // add array with NULL as element
         $select->where($k5 = 'key' . rand(50, 59), \DbSelect::in($v51 = rand(300, 399), null, $v52 = rand(400, 499)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL" .
                             " AND `$k4` IS NULL AND (`$k5` IS NULL OR (`$k5` IN (:w4, :w5))", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22, ':w4' => $v51,
@@ -544,12 +470,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryNotIn()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::not_in($v11 = rand(100, 199), $v12 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -557,7 +483,7 @@ class Test_DbSql extends Test_Abstract
         // empty NOT IN array
         $select->where($k2 = 'key' . rand(20, 29), \DbSelect::not_in());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -565,7 +491,7 @@ class Test_DbSql extends Test_Abstract
         // NOT IN with only NULL
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::not_in(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL" .
                             " AND `$k3` IS NOT NULL", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
@@ -574,7 +500,7 @@ class Test_DbSql extends Test_Abstract
         // array with NULL element
         $select->where($k4 = 'key' . rand(40, 49), \DbSelect::not_in($v41 = rand(100, 199), null, $v42 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL" .
                             " AND `$k3` IS NOT NULL AND `$k4` IS NOT NULL AND `$k4` NOT IN (:w2, :w3)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v41, ':w3' => $v42), $stmt->params);
@@ -595,12 +521,12 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryBetween()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::between($v1 = rand(100, 400), $v2 = rand(500, 999)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` BETWEEN :w0 AND :w1", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -634,14 +560,14 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryIsNull()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
 
         // try explicit is_null() function
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::is_null());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -649,7 +575,7 @@ class Test_DbSql extends Test_Abstract
         // try empty array via in()
         $select->where($k2 = 'key' . rand(20, 29), \DbSelect::in());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -657,7 +583,7 @@ class Test_DbSql extends Test_Abstract
         // try array with NULL only
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::in(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL AND `$k3` IS NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -665,7 +591,7 @@ class Test_DbSql extends Test_Abstract
         // try just empty array
         $select->where($k4 = 'key' . rand(40, 49), array());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL AND `$k3` IS NULL" .
                             " AND `$k4` IS NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
@@ -674,14 +600,14 @@ class Test_DbSql extends Test_Abstract
 
     public function testQueryNotNull()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
 
         // try explicit not_null() function
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $select->where($k1 = 'key' . rand(10, 19), \DbSelect::not_null());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -689,7 +615,7 @@ class Test_DbSql extends Test_Abstract
         // try empty array via not_in()
         $select->where($k2 = 'key' . rand(20, 29), \DbSelect::not_in());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL AND `$k2` IS NOT NULL", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -697,7 +623,7 @@ class Test_DbSql extends Test_Abstract
         // try array with NULL only
         $select->where($k3 = 'key' . rand(30, 39), \DbSelect::not_in(null));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL AND `$k2` IS NOT NULL AND `$k3` IS NOT NULL",
                             $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
@@ -709,14 +635,14 @@ class Test_DbSql extends Test_Abstract
      */
     public function testQueryWhere()
     {
-        $pdo = new MyPDO();
+        $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $this->assertCount(0, $pdo->statements);
 
         // try whereless select
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl`", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -724,7 +650,7 @@ class Test_DbSql extends Test_Abstract
         // add pure where
         $select->where($k1 = 'key' . rand(10, 19), $v1 = rand(100, 199));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -732,7 +658,7 @@ class Test_DbSql extends Test_Abstract
         // add WHERE OR
         $select->whereOr($k2 = 'key' . rand(20, 29), \DbSelect::ne($v2 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -740,7 +666,7 @@ class Test_DbSql extends Test_Abstract
         // another WHERE OR
         $select->whereOr($k3 = 'key' . rand(30, 39), \DbSelect::lt($v3 = rand(300, 399)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
@@ -748,7 +674,7 @@ class Test_DbSql extends Test_Abstract
         // add full WHERE
         $select->where($k4 = 'key' . rand(40, 49), \DbSelect::gt($v4 = rand(400, 499)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND `$k4` > :w3",
                             $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4), $stmt->params);
@@ -757,7 +683,7 @@ class Test_DbSql extends Test_Abstract
         // another where or
         $select->whereOr($k5 = 'key' . rand(50, 59), \DbSelect::gte($v5 = rand(500, 599)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
                             "(`$k4` > :w3 OR `$k5` >= :w4)",
                             $stmt->sql);
@@ -767,7 +693,7 @@ class Test_DbSql extends Test_Abstract
         // and another where or
         $select->whereOr($k6 = 'key' . rand(60, 69), \DbSelect::is_null());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
                             "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL)",
                             $stmt->sql);
@@ -777,7 +703,7 @@ class Test_DbSql extends Test_Abstract
         // another straight where
         $select->where($k7 = 'key' . rand(70, 79), \DbSelect::not_null());
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
                             "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND `$k7` IS NOT NULL",
                             $stmt->sql);
@@ -787,7 +713,7 @@ class Test_DbSql extends Test_Abstract
         // and let's add an array - just for curiosity
         $select->whereOr($k8 = 'key' . rand(80, 89), array($v81 = rand(800, 849), null, $v82 = rand(850, 859)));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
                             "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND (`$k7` IS NOT NULL OR (`$k8` IS NULL " .
                             "OR (`$k8` IN (:w5, :w6)))",
@@ -800,7 +726,7 @@ class Test_DbSql extends Test_Abstract
         // ... and another WHERE for a clear conscience
         $select->where($k9 = 'key' . rand(90, 99), \DbSelect::like($v9 = $this->randValue()));
         $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
                             "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND (`$k7` IS NOT NULL OR (`$k8` IS NULL " .
                             "OR (`$k8` IN (:w5, :w6))) AND `$k9` LIKE :w7",
@@ -809,6 +735,20 @@ class Test_DbSql extends Test_Abstract
                                   ':w6' => $v82, ':w7' => $v9),
                             $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+    }
+
+    public function testQueryOrder()
+    {
+        $pdo = new TestPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->setOrder($order = $this->randValue());
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY $order", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
     }
 
 }

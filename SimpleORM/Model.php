@@ -89,9 +89,9 @@ abstract class Model
         return $this->getMapper()->save($this);
     }
 
-    public final function search()
+    public final function search($order = null)
     {
-        return $this->getMapper()->search($this);
+        return $this->getMapper()->search($this, $order);
     }
 
     public function delete($head = false)

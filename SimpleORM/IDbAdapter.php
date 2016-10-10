@@ -14,4 +14,6 @@ Interface IDbAdapter
     public function beginTransaction();
     public function commit();
     public function rollBack();
+
+    public function query(\DbSelect $select);
 }

@@ -263,6 +263,9 @@ class DbSql implements IDbAdapter
         if ($where = $this->_whereClause($select->getWhere(), $params))
             $SQLStr .= " WHERE $where";
 
+        if ($select->getOrder())
+            $SQLStr .= " ORDER BY " . $select->getOrder();
+
         $stmt = $this->getAdapter()->prepare($SQLStr);
         $stmt->execute($params);
 

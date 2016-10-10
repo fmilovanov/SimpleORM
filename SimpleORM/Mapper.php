@@ -114,9 +114,27 @@ abstract class Mapper
         return date('Y-m-d H:i:s');
     }
 
-    public function search(\Model $model)
+    public function search(\Model $model, $order = null)
     {
+        $select = new \DbSelect($this->getTableName());
+        $columns = $this->getColumns();
+        $columns['id'] = 'Id';
+        foreach ($columns as $key => $getter)
+        {
+            $getter = "get$getter";
+            $value = $model->$getter();
 
+            if (!is_null($value))
+                $select->where($key, $value);
+        }
+
+        $select->setOrder($order);
+
+        $result = array();
+        foreach ($this->getDbAdapter()->query($select) as $data)
+            $result[] = $this->getModel($data);
+
+        return $result;
     }
 
     public function delete(\Model $model, $herd = false)
