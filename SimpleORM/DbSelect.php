@@ -19,6 +19,9 @@ class DbSelect
     const OPERATOR_LTE      = 'lte';
     const OPERATOR_GTE      = 'gte';
     const OPERATOR_IN       = 'in';
+    const OPERATOR_NOT_IN   = 'not_in';
+    const OPERATOR_BETWEEN  = 'between';
+    const OPERATOR_LIKE     = 'like';
 
 
     const ERROR_TABLE       = 'bad table name';
@@ -147,7 +150,6 @@ class DbSelect
     }
 
     /**
-     * @param string $value
      * @return \DbWhereCond
      */
     public static function in()
@@ -159,5 +161,50 @@ class DbSelect
         return self::cond(self::OPERATOR_IN, $args);
     }
 
+   /**
+     * @return \DbWhereCond
+     */
+    public static function not_in()
+    {
+        $args = func_get_args();
+        if ((count($args) == 1) && (is_array($args[0])))
+            $args = $args[0];
 
+        return self::cond(self::OPERATOR_NOT_IN, $args);
+    }
+
+    /**
+     * @param int $val1
+     * @param int $val2
+     * @return \DbWhereCond
+     */
+    public static function between($val1, $val2)
+    {
+        return self::cond(self::OPERATOR_BETWEEN, $val1, $val2);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function like($value)
+    {
+        return self::cond(self::OPERATOR_LIKE, $value);
+    }
+
+    /**
+     * @return \DbWhereCond
+     */
+    public static function is_null()
+    {
+        return self::cond(self::OPERATOR_IN, array());
+    }
+
+    /**
+     * @return \DbWhereCond
+     */
+    public static function not_null()
+    {
+        return self::cond(self::OPERATOR_NOT_IN, array());
+    }
 }

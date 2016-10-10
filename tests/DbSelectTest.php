@@ -142,6 +142,27 @@ class Test_DbSelect extends Test_Abstract
         $this->assertEquals(array($v421, $v422, $v423), $where[3][1]->val1);
         $this->assertEquals(\DbSelect::OPERATOR_IN, $where[3][1]->operator);
 
+        // NOT IN
+        $v431 = rand(70, 79);
+        $v432 = rand(80, 89);
+        $v433 = rand(90, 99);
+        $select->whereOr($k43 = 'key' . rand(110, 119), \DbSelect::not_in($v431, $v432, $v433));
+        $this->assertCount(4, $where = $select->getWhere());
+        $this->assertCount(3, $where[3]);
+        $this->assertTrue($where[3][2] instanceof DbWhereCond);
+        $this->assertEquals($k43, $where[3][2]->key);
+        $this->assertEquals(array($v431, $v432, $v433), $where[3][2]->val1);
+        $this->assertEquals(\DbSelect::OPERATOR_NOT_IN, $where[3][2]->operator);
+
+        // another type of not in
+        $select->whereOr($k44 = 'key' . rand(120, 129), \DbSelect::not_in(array($v431, $v432, $v433)));
+        $this->assertCount(4, $where = $select->getWhere());
+        $this->assertCount(4, $where[3]);
+        $this->assertTrue($where[3][3] instanceof DbWhereCond);
+        $this->assertEquals($k44, $where[3][3]->key);
+        $this->assertEquals(array($v431, $v432, $v433), $where[3][3]->val1);
+        $this->assertEquals(\DbSelect::OPERATOR_NOT_IN, $where[3][3]->operator);
+
         // array of non-scalars
         try
         {
@@ -168,6 +189,60 @@ class Test_DbSelect extends Test_Abstract
         // add normal where for or
         $select->where('key', 1);
         $select->whereOr('key', 2);
-
     }
+
+    public function testWhereBetwwen()
+    {
+        $select = new \DbSelect($table = 'tbl' . rand(100, 999));
+        $this->assertCount(0, $select->getWhere());
+
+        $select->where($key = 'key' . rand(100, 999), \DbSelect::between($v1 = rand(100, 599), $v2 = rand(500, 999)));
+        $this->assertCount(1, $where = $select->getWhere());
+        $this->assertCount(1, $where[0]);
+        $this->assertEquals($key, $where[0][0]->key);
+        $this->assertEquals($v1, $where[0][0]->val1);
+        $this->assertEquals($v2, $where[0][0]->val2);
+        $this->assertEquals(\DbSelect::OPERATOR_BETWEEN, $where[0][0]->operator);
+    }
+
+    public function testWhereLike()
+    {
+        $select = new \DbSelect($table = 'tbl' . rand(100, 999));
+        $this->assertCount(0, $select->getWhere());
+
+        $select->where($key = 'key' . rand(100, 999), \DbSelect::like($v = $this->randValue()));
+        $this->assertCount(1, $where = $select->getWhere());
+        $this->assertCount(1, $where[0]);
+        $this->assertEquals($key, $where[0][0]->key);
+        $this->assertEquals($v, $where[0][0]->val1);
+        $this->assertEquals(\DbSelect::OPERATOR_LIKE, $where[0][0]->operator);
+    }
+
+
+    public function testWhereIsNull()
+    {
+        $select = new \DbSelect($table = 'tbl' . rand(100, 999));
+        $this->assertCount(0, $select->getWhere());
+
+        $select->where($key = 'key' . rand(100, 999), \DbSelect::is_null());
+        $this->assertCount(1, $where = $select->getWhere());
+        $this->assertCount(1, $where[0]);
+        $this->assertEquals($key, $where[0][0]->key);
+        $this->assertEquals(array(), $where[0][0]->val1);
+        $this->assertEquals(\DbSelect::OPERATOR_IN, $where[0][0]->operator);
+    }
+
+    public function testWhereNotNull()
+    {
+        $select = new \DbSelect($table = 'tbl' . rand(100, 999));
+        $this->assertCount(0, $select->getWhere());
+
+        $select->where($key = 'key' . rand(100, 999), \DbSelect::not_null());
+        $this->assertCount(1, $where = $select->getWhere());
+        $this->assertCount(1, $where[0]);
+        $this->assertEquals($key, $where[0][0]->key);
+        $this->assertEquals(array(), $where[0][0]->val1);
+        $this->assertEquals(\DbSelect::OPERATOR_NOT_IN, $where[0][0]->operator);
+    }
+
 }
