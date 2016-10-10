@@ -14,14 +14,15 @@ class DbWhereCond
 class DbSelect
 {
     const OPERATOR_EQ       = 'eq';
+    const OPERATOR_NE       = 'ne';
     const OPERATOR_LT       = 'lt';
     const OPERATOR_GT       = 'gt';
     const OPERATOR_LTE      = 'lte';
     const OPERATOR_GTE      = 'gte';
+    const OPERATOR_LIKE     = 'like';
     const OPERATOR_IN       = 'in';
     const OPERATOR_NOT_IN   = 'not_in';
     const OPERATOR_BETWEEN  = 'between';
-    const OPERATOR_LIKE     = 'like';
 
 
     const ERROR_TABLE       = 'bad table name';
@@ -111,6 +112,24 @@ class DbSelect
         $cond->val2 = $value2;
 
         return $cond;
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function eq($value)
+    {
+        return self::cond(self::OPERATOR_EQ, $value);
+    }
+
+    /**
+     * @param string $value
+     * @return \DbWhereCond
+     */
+    public static function ne($value)
+    {
+        return self::cond(self::OPERATOR_NE, $value);
     }
 
     /**

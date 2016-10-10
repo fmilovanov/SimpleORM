@@ -13,10 +13,12 @@ class DbSql implements IDbAdapter
 
     private static $op_mapping = array(
         \DbSelect::OPERATOR_EQ      => '=',
+        \DbSelect::OPERATOR_NE      => '!=',
         \DbSelect::OPERATOR_LT      => '<',
         \DbSelect::OPERATOR_LTE     => '<=',
         \DbSelect::OPERATOR_GT      => '>',
         \DbSelect::OPERATOR_GTE     => '>=',
+        \DbSelect::OPERATOR_LIKE    => 'LIKE'
     );
 
 
@@ -70,7 +72,12 @@ class DbSql implements IDbAdapter
             {
                 $is_null = true;
             }
-            else throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $key));
+            else
+            {
+                $key = preg_replace('/^`/', '', $key);
+                $key = preg_replace('/`$/', '', $key);
+                throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $key));
+            }
         }
 
         return $result;
@@ -83,10 +90,23 @@ class DbSql implements IDbAdapter
         switch ($cond->operator)
         {
             case \DbSelect::OPERATOR_EQ:
+            case \DbSelect::OPERATOR_NE:
+                if (is_null($value))
+                {
+                    $where = "$field IS " . ($cond->operator == \DbSelect::OPERATOR_NE ? "NOT " : "") . "NULL";
+                    break;
+                }
+
+                // intentionally no "break" here -- LT/GT/etc will handle EQ/NE
+
             case \DbSelect::OPERATOR_LT:
             case \DbSelect::OPERATOR_LTE:
             case \DbSelect::OPERATOR_GT:
             case \DbSelect::OPERATOR_GTE:
+            case \DbSelect::OPERATOR_LIKE:
+                if (!is_scalar($value))
+                    throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $cond->key));
+
                 $where = "$field " . self::$op_mapping[$cond->operator] . " :w$pcount";
                 $params[":w$pcount"] = $cond->val1;
                 $pcount += 1;
@@ -108,7 +128,34 @@ class DbSql implements IDbAdapter
                 }
                 break;
 
+            case \DbSelect::OPERATOR_NOT_IN:
+                $values = $this->_parseSearchArray($field, $value, $pcount, $params, $is_null);
+                if (count($values))
+                {
+                    $where = "$field NOT IN (" . implode(', ' , $values) . ")";
+                    if ($is_null)
+                    {
+                        $where = "$field IS NOT NULL AND $where";
+                    }
+                }
+                elseif ($is_null || !count($values))
+                {
+                    $where = "$field IS NOT NULL";
+                }
+                break;
+
+            case \DbSelect::OPERATOR_BETWEEN:
+                if (!is_scalar($cond->val1) || !is_scalar($cond->val2))
+                    throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $cond->key));
+
+                $where = "$field BETWEEN :w$pcount AND :w" . ($pcount + 1);
+                $params[":w$pcount"] = $cond->val1;
+                $params[":w" . ($pcount + 1)] = $cond->val2;
+                $pcount += 1;
+                break;
+
             default:
+                throw new \Exception('Unknown type');
         }
 
         return $where;

@@ -282,7 +282,432 @@ class Test_DbSql extends Test_Abstract
         }
     }
 
-    public function testQuery()
+    public function testQueryEq()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), $v1 = rand(100, 199));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add via class
+        $select->where($k2 = 'key' . rand(20, 29), \DbSelect::eq($v2 = rand(200, 299)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0 AND `$k2` = :w1", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add NULL
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::eq(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0 AND `$k2` = :w1 AND `$k3` IS NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::eq(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryNe()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::ne($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` != :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add NULL
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::ne(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` != :w0 AND `$k3` IS NOT NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::ne(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryLt()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::lt($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` < :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::lt(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryLte()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::lte($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` <= :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::lte(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryGt()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::gt($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` > :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::gt(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryGte()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::gte($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` >= :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::gte(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryLike()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::like($v1 = rand(100, 199)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` LIKE :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try not scalar
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::like(array(-1)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k4), $e->getMessage());
+        }
+    }
+
+    public function testQueryIn()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), array($v11 = rand(100, 199), $v12 = rand(200, 299)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add via class
+        $select->where($k2 = 'key' . rand(20, 29), \DbSelect::in($v21 = rand(300, 399), $v22 = rand(400, 499)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add empty array
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::in());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add array with NULL only
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::in(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL" .
+                            " AND `$k4` IS NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add array with NULL as element
+        $select->where($k5 = 'key' . rand(50, 59), \DbSelect::in($v51 = rand(300, 399), null, $v52 = rand(400, 499)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IN (:w0, :w1) AND `$k2` IN (:w2, :w3) AND `$k3` IS NULL" .
+                            " AND `$k4` IS NULL AND (`$k5` IS NULL OR (`$k5` IN (:w4, :w5))", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v21, ':w3' => $v22, ':w4' => $v51,
+                                  ':w5' => $v52), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try non-scalar
+        $select->where($k6 = 'key' . rand(60, 69), \DbSelect::in(array(), 0, -1));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k6), $e->getMessage());
+        }
+    }
+
+    public function testQueryNotIn()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::not_in($v11 = rand(100, 199), $v12 = rand(200, 299)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // empty NOT IN array
+        $select->where($k2 = 'key' . rand(20, 29), \DbSelect::not_in());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // NOT IN with only NULL
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::not_in(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL" .
+                            " AND `$k3` IS NOT NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // array with NULL element
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::not_in($v41 = rand(100, 199), null, $v42 = rand(200, 299)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` NOT IN (:w0, :w1) AND `$k2` IS NOT NULL" .
+                            " AND `$k3` IS NOT NULL AND `$k4` IS NOT NULL AND `$k4` NOT IN (:w2, :w3)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v11, ':w1' => $v12, ':w2' => $v41, ':w3' => $v42), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try non-scalar
+        $select->where($k5 = 'key' . rand(40, 49), \DbSelect::not_in(rand(100, 199), array(), rand(200, 299)));
+        try
+        {
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k5), $e->getMessage());
+        }
+    }
+
+    public function testQueryBetween()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::between($v1 = rand(100, 400), $v2 = rand(500, 999)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` BETWEEN :w0 AND :w1", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try first not scalar
+        try
+        {
+            $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+            $select->where($k1, \DbSelect::between(array(), $v2 = rand(500, 999)));
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k1), $e->getMessage());
+        }
+
+        // try 2nd not scalar
+        try
+        {
+            $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+            $select->where($k1, \DbSelect::between($v2 = rand(500, 999), array()));
+            $adapter->query($select);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(\DbSql::ERROR_KEY_NOT_SCALAR, $k1), $e->getMessage());
+        }
+    }
+
+    public function testQueryIsNull()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+
+        // try explicit is_null() function
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::is_null());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try empty array via in()
+        $select->where($k2 = 'key' . rand(20, 29), \DbSelect::in());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try array with NULL only
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::in(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL AND `$k3` IS NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try just empty array
+        $select->where($k4 = 'key' . rand(40, 49), array());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NULL AND `$k2` IS NULL AND `$k3` IS NULL" .
+                            " AND `$k4` IS NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+    }
+
+    public function testQueryNotNull()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+
+        // try explicit not_null() function
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->where($k1 = 'key' . rand(10, 19), \DbSelect::not_null());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try empty array via not_in()
+        $select->where($k2 = 'key' . rand(20, 29), \DbSelect::not_in());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL AND `$k2` IS NOT NULL", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try array with NULL only
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::not_in(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` IS NOT NULL AND `$k2` IS NOT NULL AND `$k3` IS NOT NULL",
+                            $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+    }
+
+    /**
+     * This tests various combinations of WHERE clause
+     */
+    public function testQueryWhere()
     {
         $pdo = new MyPDO();
         $adapter = new DbSql($pdo);
@@ -291,142 +716,99 @@ class Test_DbSql extends Test_Abstract
         // try whereless select
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
         $adapter->query($select);
-        $this->assertCount(1, $pdo->statements);
-        $this->assertTrue($pdo->statements[0] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[0];
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl`", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // add a param
-        $select->where($k1 = 'key' . rand(10, 19), $v1 = $this->randValue());
+        // add pure where
+        $select->where($k1 = 'key' . rand(10, 19), $v1 = rand(100, 199));
         $adapter->query($select);
-        $this->assertCount(2, $pdo->statements);
-        $this->assertTrue($pdo->statements[1] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[1];
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
         $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // another param
-        $select->whereOr($k2 = 'key' . rand(20, 29), $v2 = $this->randValue());
+        // add WHERE OR
+        $select->whereOr($k2 = 'key' . rand(20, 29), \DbSelect::ne($v2 = rand(200, 299)));
         $adapter->query($select);
-        $this->assertCount(3, $pdo->statements);
-        $this->assertTrue($pdo->statements[2] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[2];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1)", $stmt->sql);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // add LT
-        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::lt($v3 = rand(1000, 9999)));
+        // another WHERE OR
+        $select->whereOr($k3 = 'key' . rand(30, 39), \DbSelect::lt($v3 = rand(300, 399)));
         $adapter->query($select);
-        $this->assertCount(4, $pdo->statements);
-        $this->assertTrue($pdo->statements[3] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[3];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2", $stmt->sql);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2)", $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // LTE
-        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::lte($v4 = rand(1000, 9999)));
+        // add full WHERE
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::gt($v4 = rand(400, 499)));
         $adapter->query($select);
-        $this->assertCount(5, $pdo->statements);
-        $this->assertTrue($pdo->statements[4] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[4];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3",
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND `$k4` > :w3",
                             $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // GT
-        $select->where($k5 = 'key' . rand(50, 59), \DbSelect::gt($v5 = rand(1000, 9999)));
+        // another where or
+        $select->whereOr($k5 = 'key' . rand(50, 59), \DbSelect::gte($v5 = rand(500, 599)));
         $adapter->query($select);
-        $this->assertCount(6, $pdo->statements);
-        $this->assertTrue($pdo->statements[5] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[5];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4", $stmt->sql);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
+                            "(`$k4` > :w3 OR `$k5` >= :w4)",
+                            $stmt->sql);
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // GTE
-        $select->where($k6 = 'key' . rand(60, 69), \DbSelect::gte($v6 = rand(1000, 9999)));
+        // and another where or
+        $select->whereOr($k6 = 'key' . rand(60, 69), \DbSelect::is_null());
         $adapter->query($select);
-        $this->assertCount(7, $pdo->statements);
-        $this->assertTrue($pdo->statements[6] instanceof \MySTMT);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
+                            "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL)",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        $stmt = $pdo->statements[6];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4 AND `$k6` >= :w5", $stmt->sql);
-        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6),
+        // another straight where
+        $select->where($k7 = 'key' . rand(70, 79), \DbSelect::not_null());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
+                            "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND `$k7` IS NOT NULL",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // and let's add an array - just for curiosity
+        $select->whereOr($k8 = 'key' . rand(80, 89), array($v81 = rand(800, 849), null, $v82 = rand(850, 859)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
+                            "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND (`$k7` IS NOT NULL OR (`$k8` IS NULL " .
+                            "OR (`$k8` IN (:w5, :w6)))",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v81,
+                                  ':w6' => $v82),
                             $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
-        // add IN array
-        $select->where($k7 = 'key' . rand(70, 79), \DbSelect::in($v71 = rand(10, 99), $v72 = rand(100, 999)));
-        $adapter->query($select);
-        $this->assertCount(8, $pdo->statements);
-        $this->assertTrue($pdo->statements[7] instanceof \MySTMT);
-
-        $stmt = $pdo->statements[7];
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7)", $stmt->sql);
-        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
-                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
-        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
-
-        // empty array
-        $select->where($k8 = 'key' . rand(80, 89), \DbSelect::in());
+        // ... and another WHERE for a clear conscience
+        $select->where($k9 = 'key' . rand(90, 99), \DbSelect::like($v9 = $this->randValue()));
         $adapter->query($select);
         $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL", $stmt->sql);
-        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
-                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` != :w1 OR `$k3` < :w2) AND " .
+                            "(`$k4` > :w3 OR `$k5` >= :w4 OR `$k6` IS NULL) AND (`$k7` IS NOT NULL OR (`$k8` IS NULL " .
+                            "OR (`$k8` IN (:w5, :w6))) AND `$k9` LIKE :w7",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v81,
+                                  ':w6' => $v82, ':w7' => $v9),
+                            $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
-
-        // NULL array
-        $select->where($k9 = 'key' . rand(90, 99), \DbSelect::in(null));
-        $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL" .
-                            " AND `$k9` IS NULL", $stmt->sql);
-        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
-                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
-        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
-
-        // array with NULL
-        $select->where($k10 = 'key' . rand(100, 109),
-                       \DbSelect::in(null, $v81 = rand(100, 999), $v82 = rand(1000, 9999)));
-        $adapter->query($select);
-        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
-        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
-                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL" .
-                            " AND `$k9` IS NULL AND (`$k10` IS NULL OR (`$k10` IN (:w8, :w9))", $stmt->sql);
-        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
-                            ':w6' => $v71, ':w7' => $v72, ':w8' => $v81, ':w9' => $v82), $stmt->params);
-        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
 
 }
