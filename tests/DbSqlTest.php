@@ -4,6 +4,7 @@
  */
 require_once(__DIR__ . '/Abstract.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbSql.php');
+require_once(dirname(__DIR__) . '/SimpleORM/DbSelect.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbException.php');
 
 class MySTMT
@@ -11,6 +12,7 @@ class MySTMT
     public $sql;
     public $params;
     public $error;
+    public $fetch_all;
 
     public function __construct($sql, $error = null)
     {
@@ -24,9 +26,19 @@ class MySTMT
         return $this->error ? false : true;
     }
 
+    public function errorCode()
+    {
+        return $this->error ? $this->error[0] : null;
+    }
+
     public function errorInfo()
     {
         return $this->error;
+    }
+
+    public function fetchAll($type)
+    {
+        $this->fetch_all = $type;
     }
 }
 
@@ -268,6 +280,111 @@ class Test_DbSql extends Test_Abstract
             $this->assertEquals("UPDATE `$table` SET `x1` = :c0, `x2` = :c1 WHERE `id` = :w0", $stmt->sql);
             $this->assertEquals(array(':c0' => $data['x1'], ':c1' => $data['x2'], ':w0' => $id), $stmt->params);
         }
+    }
+
+    public function testQuery()
+    {
+        $pdo = new MyPDO();
+        $adapter = new DbSql($pdo);
+        $this->assertCount(0, $pdo->statements);
+
+        // try whereless select
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $adapter->query($select);
+        $this->assertCount(1, $pdo->statements);
+        $this->assertTrue($pdo->statements[0] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[0];
+        $this->assertEquals("SELECT * FROM `$tbl`", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add a param
+        $select->where($k1 = 'key' . rand(10, 19), $v1 = $this->randValue());
+        $adapter->query($select);
+        $this->assertCount(2, $pdo->statements);
+        $this->assertTrue($pdo->statements[1] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[1];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE `$k1` = :w0", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // another param
+        $select->whereOr($k2 = 'key' . rand(20, 29), $v2 = $this->randValue());
+        $adapter->query($select);
+        $this->assertCount(3, $pdo->statements);
+        $this->assertTrue($pdo->statements[2] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[2];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add LT
+        $select->where($k3 = 'key' . rand(30, 39), \DbSelect::lt($v3 = rand(1000, 9999)));
+        $adapter->query($select);
+        $this->assertCount(4, $pdo->statements);
+        $this->assertTrue($pdo->statements[3] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[3];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // LTE
+        $select->where($k4 = 'key' . rand(40, 49), \DbSelect::lte($v4 = rand(1000, 9999)));
+        $adapter->query($select);
+        $this->assertCount(5, $pdo->statements);
+        $this->assertTrue($pdo->statements[4] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[4];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3",
+                            $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // GT
+        $select->where($k5 = 'key' . rand(50, 59), \DbSelect::gt($v5 = rand(1000, 9999)));
+        $adapter->query($select);
+        $this->assertCount(6, $pdo->statements);
+        $this->assertTrue($pdo->statements[5] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[5];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // GTE
+        $select->where($k6 = 'key' . rand(60, 69), \DbSelect::gte($v6 = rand(1000, 9999)));
+        $adapter->query($select);
+        $this->assertCount(7, $pdo->statements);
+        $this->assertTrue($pdo->statements[6] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[6];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4 AND `$k6` >= :w5", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6),
+                            $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // add IN array
+        $select->where($k7 = 'key' . rand(70, 79), \DbSelect::in($v71 = rand(10, 99), $v72 = rand(100, 999)));
+        $adapter->query($select);
+        $this->assertCount(8, $pdo->statements);
+        $this->assertTrue($pdo->statements[7] instanceof \MySTMT);
+
+        $stmt = $pdo->statements[7];
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7)", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
+                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+
+
+
 
 
 

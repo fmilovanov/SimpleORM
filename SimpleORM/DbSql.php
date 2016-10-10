@@ -8,6 +8,17 @@ class DbSql implements IDbAdapter
     const ERROR_DATA            = 'No data';
     const ERROR_WHERE           = 'No where';
     const ERROR_KEY_NOT_SCALAR  = '`%s` is not scalar';
+    const ERROR_WHERE_TYPE      = 'Where type mismatch';
+    const ERROR_OPERATOR        = 'Unknown operator';
+
+    private static $op_mapping = array(
+        \DbSelect::OPERATOR_EQ      => '=',
+        \DbSelect::OPERATOR_LT      => '<',
+        \DbSelect::OPERATOR_LTE     => '<=',
+        \DbSelect::OPERATOR_GT      => '>',
+        \DbSelect::OPERATOR_GTE     => '>=',
+    );
+
 
     private $_adapter;
 
@@ -42,6 +53,92 @@ class DbSql implements IDbAdapter
         }
 
         return $SQLStr ? substr($SQLStr, 2) : '';
+    }
+
+    private function _parseSearchArray($key, array $values, &$pcount, array &$params, &$is_null)
+    {
+        $result = array();
+        foreach ($values as $value)
+        {
+            if (is_scalar($value))
+            {
+                $params[":w$pcount"] = $value;
+                $result[] = ":w$pcount";
+                $pcount += 1;
+            }
+            elseif (is_null($value))
+            {
+                $is_null = true;
+            }
+            else throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $key));
+        }
+
+        return $result;
+    }
+
+    private function _whereOperand(\DbWhereCond $cond, array &$params, &$pcount)
+    {
+        $field = '`' . $cond->key . '`';
+        $value = $cond->val1;
+        switch ($cond->operator)
+        {
+            case \DbSelect::OPERATOR_EQ:
+            case \DbSelect::OPERATOR_LT:
+            case \DbSelect::OPERATOR_LTE:
+            case \DbSelect::OPERATOR_GT:
+            case \DbSelect::OPERATOR_GTE:
+                $where = "$field " . self::$op_mapping[$cond->operator] . " :w$pcount";
+                $params[":w$pcount"] = $cond->val1;
+                $pcount += 1;
+                break;
+
+            case \DbSelect::OPERATOR_IN:
+                $values = $this->_parseSearchArray($field, $value, $pcount, $params, $is_null);
+                if (count($values))
+                {
+                    $where = "$field IN (" . implode(', ' , $values) . ")";
+                    if ($is_null)
+                    {
+                        $where = "($field IS NULL OR ($where)";
+                    }
+                }
+                elseif ($is_null)
+                {
+                    $where = "$field IS NULL";
+                }
+                break;
+
+            default:
+        }
+
+        return $where;
+    }
+
+    private function _whereClause(array $data, array &$params)
+    {
+        $i = 0;
+        $SQLStr = '';
+        foreach ($data as $cond)
+        {
+            if (!is_array($cond))
+                throw new Exception(self::ERROR_WHERE_TYPE);
+
+            $operands = array();
+            foreach ($cond as $cond)
+            {
+                if (!($cond instanceof \DbWhereCond))
+                    throw new Exception(self::ERROR_WHERE_TYPE);
+
+                $operands[] = $this->_whereOperand($cond, $params, $i);
+            }
+
+            if (count($operands) > 1)
+                $SQLStr .= ' AND (' . implode(' OR ', $operands) . ')';
+            else
+                $SQLStr .= ' AND ' . $operands[0];
+        }
+
+        return $SQLStr ? substr($SQLStr, 5) : '';
     }
 
     /**
@@ -110,6 +207,22 @@ class DbSql implements IDbAdapter
     public function rollBack()
     {
         $this->getAdapter()->rollBack();
+    }
+
+    public function query(\DbSelect $select)
+    {
+        $params = array();
+        $SQLStr = "SELECT * FROM `" . $select->getTable() . "`";
+        if ($where = $this->_whereClause($select->getWhere(), $params))
+            $SQLStr .= " WHERE $where";
+
+        $stmt = $this->getAdapter()->prepare($SQLStr);
+        $stmt->execute($params);
+
+        if ((int) $stmt->errorCode())
+            $this->_throw ($stmt, $SQLStr, $params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 }
