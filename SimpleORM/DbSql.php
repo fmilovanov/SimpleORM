@@ -102,7 +102,7 @@ class DbSql implements IDbAdapter
                         $where = "($field IS NULL OR ($where)";
                     }
                 }
-                elseif ($is_null)
+                elseif ($is_null || !count($values))
                 {
                     $where = "$field IS NULL";
                 }

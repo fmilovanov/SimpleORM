@@ -150,7 +150,7 @@ class DbSelect
      * @param string $value
      * @return \DbWhereCond
      */
-    public static function in($value)
+    public static function in()
     {
         $args = func_get_args();
         if ((count($args) == 1) && (is_array($args[0])))

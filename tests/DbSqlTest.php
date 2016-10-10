@@ -382,6 +382,42 @@ class Test_DbSql extends Test_Abstract
                             ':w6' => $v71, ':w7' => $v72), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
+        // empty array
+        $select->where($k8 = 'key' . rand(80, 89), \DbSelect::in());
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
+                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // NULL array
+        $select->where($k9 = 'key' . rand(90, 99), \DbSelect::in(null));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL" .
+                            " AND `$k9` IS NULL", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
+                            ':w6' => $v71, ':w7' => $v72), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // array with NULL
+        $select->where($k10 = 'key' . rand(100, 109),
+                       \DbSelect::in(null, $v81 = rand(100, 999), $v82 = rand(1000, 9999)));
+        $adapter->query($select);
+        $this->assertInstanceOf('MySTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` WHERE (`$k1` = :w0 OR `$k2` = :w1) AND `$k3` < :w2 AND `$k4` <= :w3" .
+                            " AND `$k5` > :w4 AND `$k6` >= :w5 AND `$k7` IN (:w6, :w7) AND `$k8` IS NULL" .
+                            " AND `$k9` IS NULL AND (`$k10` IS NULL OR (`$k10` IN (:w8, :w9))", $stmt->sql);
+        $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3, ':w3' => $v4, ':w4' => $v5, ':w5' => $v6,
+                            ':w6' => $v71, ':w7' => $v72, ':w8' => $v81, ':w9' => $v82), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+
+
+
 
 
 
