@@ -3,51 +3,8 @@
  * @author Felix A. Milovanov
  */
 require_once(__DIR__ . '/Abstract.php');
-
-class Model_MyTable extends Model
-{
-    public $validated   = false;
-
-    protected static $__defaults = array(
-        'id'            => null,
-        'x1'            => null,
-        'x2'            => null,
-        'created_on'    => null,
-        'updated_on'    => null
-    );
-
-    public function getX1() { return $this->_data['x1']; }
-    public function setX1($val)
-    {
-        $this->_data['x1'] = trim($val);
-        return $this;
-    }
-
-    public function getX2() { return $this->_data['x2']; }
-    public function setX2($val)
-    {
-        $this->_data['x2'] = $val;
-        return $this;
-    }
-
-    public function validate()
-    {
-        $this->validated = true;
-    }
-}
-
-class Mapper_MyTable extends Mapper
-{
-    public function getColumns() {
-        return array(
-            'x1'            => 'X1',
-            'x2'            => 'X2',
-            'created_on'    => 'CreatedOn',
-            'updated_on'    => 'UpdatedOn',
-
-        );
-    }
-}
+require_once(__DIR__ . '/models/Model/ComplexModel.php');
+require_once(__DIR__ . '/models/Mapper/ComplexModel.php');
 
 class TestAdapter implements IDbAdapter
 {
@@ -87,8 +44,8 @@ class Test_Mapper extends Test_Abstract
 {
     public function testGetTableName()
     {
-        $mapper = Mapper_MyTable::getInstance();
-        $this->assertEquals('my_table', $mapper->getTableName());
+        $mapper = Mapper_ComplexModel::getInstance();
+        $this->assertEquals('complex_model', $mapper->getTableName());
     }
 
     public function testSave()
@@ -98,7 +55,7 @@ class Test_Mapper extends Test_Abstract
         Mapper::setDefaultDbAdapter($db);
         $this->assertCount(0, $db->inserts);
 
-        $model = new Model_MyTable();
+        $model = new Model_ComplexModel();
         $model->setX1($this->randValue());
         $model->setX2($this->randValue());
         $model->setCreatedOn($this->randValue());
@@ -114,7 +71,7 @@ class Test_Mapper extends Test_Abstract
 
         // check table/regural params
         $insert = array_pop($db->inserts);
-        $this->assertEquals('my_table', $insert[0]);
+        $this->assertEquals($model->getMapper()->getTableName(), $insert[0]);
         $this->assertEquals($model->getX1(), $insert[1]['x1']);
         $this->assertEquals($model->getX2(), $insert[1]['x2']);
 
@@ -131,7 +88,7 @@ class Test_Mapper extends Test_Abstract
 
         // check table/regural params
         $update = array_pop($db->updates);
-        $this->assertEquals('my_table', $update[0]);
+        $this->assertEquals($model->getMapper()->getTableName(), $update[0]);
         $this->assertEquals($model->getX1(), $update[1]['x1']);
         $this->assertEquals($model->getX2(), $update[1]['x2']);
 
@@ -150,7 +107,7 @@ class Test_Mapper extends Test_Abstract
         Mapper::setDefaultDbAdapter($db);
         $this->assertCount(0, $db->selects);
 
-        $model = new Model_MyTable(false);
+        $model = new Model_ComplexModel(false);
         $model->search();
         $this->assertTrue(($select = array_pop($db->selects)) instanceof \DbSelect);
         $this->assertEquals($model->getMapper()->getTableName(), $select->getTable());
