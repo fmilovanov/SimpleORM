@@ -10,6 +10,7 @@ class DbSql implements IDbAdapter
     const ERROR_KEY_NOT_SCALAR  = '`%s` is not scalar';
     const ERROR_WHERE_TYPE      = 'Where type mismatch';
     const ERROR_OPERATOR        = 'Unknown operator';
+    const ERROR_ORDER           = 'bad order';
 
     private static $op_mapping = array(
         \DbSelect::OPERATOR_EQ      => '=',
@@ -263,8 +264,23 @@ class DbSql implements IDbAdapter
         if ($where = $this->_whereClause($select->getWhere(), $params))
             $SQLStr .= " WHERE $where";
 
-        if ($select->getOrder())
-            $SQLStr .= " ORDER BY " . $select->getOrder();
+        if ($order = $select->getOrder())
+        {
+            $orders = array();
+            foreach (preg_split('/\s*,\s*/', $order) as $order)
+            {
+                if (!preg_match('/^([a-z_][a-z0-9_]+)( +(asc|desc))?$/i', $order, $m) &&
+                    !preg_match('/^`([a-z_][a-z0-9_]+)`( +(asc|desc))?$/i', $order, $m))
+                    throw new \Exception(self::ERROR_ORDER);
+
+                $orders[] = '`' . $m[1] . '`' . (isset($m[3]) ? (' ' . $m[3]) : '');
+            }
+
+            $SQLStr .= " ORDER BY " . implode(', ', $orders);
+        }
+
+        if (is_array($limit = $select->getSearchLimit()))
+            $SQLStr .= ' LIMIT ' . ($limit[1] ? ($limit[1] . ', ' . $limit[0]) : $limit[0]);
 
         $stmt = $this->getAdapter()->prepare($SQLStr);
         $stmt->execute($params);

@@ -742,13 +742,80 @@ class Test_DbSql extends Test_Abstract
         $pdo = new TestPDO();
         $adapter = new DbSql($pdo);
         $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
-        $select->setOrder($order = $this->randValue());
+        $select->setOrder($order = 'o' . rand(100, 999));
         $adapter->query($select);
         $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
-        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY $order", $stmt->sql);
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order`", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
+        // asc
+        $select->setOrder("$order ASC");
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order` ASC", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // desc
+        $select->setOrder("$order DESC");
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order` DESC", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // with quotations
+        $select->setOrder("`$order` DESC");
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order` DESC", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // couple of orders
+        $order2 = 'x' . rand(100, 999);
+        $select->setOrder("$order, `$order2` DESC");
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order`, `$order2` DESC", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        // try bad orders
+        foreach (array(2, '2x', '`id', 'id SHESC') as $order)
+        {
+            $select->setOrder("$order, `$order2` DESC");
+            try
+            {
+                $adapter->query($select);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(\DbSql::ERROR_ORDER, $e->getMessage());
+            }
+        }
+    }
+
+    public function testQuerySearchLimit()
+    {
+        $pdo = new TestPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $select->setSearchLimit($limit = rand(10, 99));
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` LIMIT $limit", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
+
+        $select->setSearchLimit($limit = rand(50, 99), $offset = rand(10, 49));
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` LIMIT $offset, $limit", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
     }
 
 }

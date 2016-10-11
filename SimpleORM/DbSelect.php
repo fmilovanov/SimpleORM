@@ -34,6 +34,7 @@ class DbSelect
     private $_table;
     private $_where = array();
     private $_order;
+    private $_search_limit;
 
     public function __construct($table)
     {
@@ -106,6 +107,12 @@ class DbSelect
             throw new \Exception(self::ERROR_ORDER);
         $this->_order = $val;
         return $this;
+    }
+
+    public function getSearchLimit() { return $this->_search_limit; }
+    public function setSearchLimit($limit, $offset = null)
+    {
+        $this->_search_limit = array($limit, $offset);
     }
 
     /**
