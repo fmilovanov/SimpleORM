@@ -146,10 +146,10 @@ class Test_Mapper extends Test_Abstract
         $this->assertNull($select->getOrder());
 
         // add order
-        $model->search($order = $this->randValue());
+        $model->search($order = 'o' . rand(100, 999));
         $this->assertTrue(($select = array_pop($db->selects)) instanceof \DbSelect);
         $this->assertEquals($model->getMapper()->getTableName(), $select->getTable());
         $this->assertEquals(array(array($cond1), array($cond2)), $select->getWhere());
-        $this->assertEquals($order, $select->getOrder());
+        $this->assertEquals("`$order`", $select->getOrder());
     }
 }

@@ -103,8 +103,24 @@ class DbSelect
     public function getOrder() { return $this->_order; }
     public function setOrder($val)
     {
-        if (!is_string($val) && !is_null($val))
+        if (is_string($val))
+        {
+            $order = array();
+            foreach (preg_split('/\s*,\s*/', $val) as $val)
+            {
+                if (!preg_match('/^([a-z_][a-z0-9_]+)( +(asc|desc))?$/i', $val, $m) &&
+                    !preg_match('/^`([a-z_][a-z0-9_]+)`( +(asc|desc))?$/i', $val, $m))
+                    throw new \Exception(self::ERROR_ORDER);
+
+                $order[] = '`' . $m[1] . '`' . (isset($m[3]) ? (' ' . $m[3]) : '');
+            }
+
+            $val = implode(', ', $order);
+        }
+        elseif (!is_null($val))
+        {
             throw new \Exception(self::ERROR_ORDER);
+        }
         $this->_order = $val;
         return $this;
     }

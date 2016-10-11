@@ -265,19 +265,7 @@ class DbSql implements IDbAdapter
             $SQLStr .= " WHERE $where";
 
         if ($order = $select->getOrder())
-        {
-            $orders = array();
-            foreach (preg_split('/\s*,\s*/', $order) as $order)
-            {
-                if (!preg_match('/^([a-z_][a-z0-9_]+)( +(asc|desc))?$/i', $order, $m) &&
-                    !preg_match('/^`([a-z_][a-z0-9_]+)`( +(asc|desc))?$/i', $order, $m))
-                    throw new \Exception(self::ERROR_ORDER);
-
-                $orders[] = '`' . $m[1] . '`' . (isset($m[3]) ? (' ' . $m[3]) : '');
-            }
-
-            $SQLStr .= " ORDER BY " . implode(', ', $orders);
-        }
+            $SQLStr .= " ORDER BY $order";
 
         if (is_array($limit = $select->getSearchLimit()))
             $SQLStr .= ' LIMIT ' . ($limit[1] ? ($limit[1] . ', ' . $limit[0]) : $limit[0]);

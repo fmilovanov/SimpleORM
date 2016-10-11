@@ -781,21 +781,6 @@ class Test_DbSql extends Test_Abstract
         $this->assertEquals("SELECT * FROM `$tbl` ORDER BY `$order`, `$order2` DESC", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
-
-        // try bad orders
-        foreach (array(2, '2x', '`id', 'id SHESC') as $order)
-        {
-            $select->setOrder("$order, `$order2` DESC");
-            try
-            {
-                $adapter->query($select);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(\DbSql::ERROR_ORDER, $e->getMessage());
-            }
-        }
     }
 
     public function testQuerySearchLimit()
