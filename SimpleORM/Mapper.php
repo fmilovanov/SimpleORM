@@ -43,15 +43,19 @@ abstract class Mapper
         return self::$__dbAdapter;
     }
 
+    /**
+     * @return Model
+     * @throws \Exception
+     */
     public function getModel($data = null)
     {
-        $name = get_class($this);
+        $class = get_class($this);
         if (preg_match('/^Mapper_/', $class))
             $class = preg_replace('/^Mapper_/', 'Model_', $class);
         else
             throw new \Exception('Cannot determine mapper name');
 
-        return new $name($data);
+        return new $class($data);
     }
 
     public function getTableName()
@@ -75,6 +79,7 @@ abstract class Mapper
             $model->validate();
 
         $data = array();
+        $created_on = $updated_on = false;
         foreach ($this->getColumns() as $key => $method)
         {
             $getter = 'get' . $method;
@@ -85,12 +90,13 @@ abstract class Mapper
                     if ($model->getId())
                         break;
 
-                    $model->$setter(self::sqlNow());
-                    $data[$key] = $model->$method();
+                    $data[$key] = self::sqlNow();
+                    $created_on = true;
                     break;
 
                 case 'updated_on':
                     $data[$key] = self::sqlNow();
+                    $updated_on = true;
                     break;
 
                 default:
@@ -106,7 +112,11 @@ abstract class Mapper
         {
             self::getDbAdapter()->insert($this->getTableName(), $data);
             $model->setId(self::getDbAdapter()->lastInsertId());
+            if ($created_on)
+                $model->setCreatedOn($data['created_on']);
         }
+        if ($updated_on)
+            $model->setUpdatedOn($data['updated_on']);
     }
 
     public static function sqlNow()
@@ -135,6 +145,21 @@ abstract class Mapper
             $result[] = $this->getModel($data);
 
         return $result;
+    }
+
+    public function find($id)
+    {
+        $model = $this->getModel(false);
+        $model->setId($id);
+
+        return array_pop($model->search());
+    }
+
+    public function fetchAll($sort = null)
+    {
+        $model = $this->getModel(false);
+
+        return $model->search($order);
     }
 
     public function delete(\Model $model, $herd = false)

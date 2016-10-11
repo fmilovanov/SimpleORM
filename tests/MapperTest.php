@@ -9,9 +9,11 @@ class Model_MyTable extends Model
     public $validated   = false;
 
     protected static $__defaults = array(
-        'id'    => null,
-        'x1'    => null,
-        'x2'    => null
+        'id'            => null,
+        'x1'            => null,
+        'x2'            => null,
+        'created_on'    => null,
+        'updated_on'    => null
     );
 
     public function getX1() { return $this->_data['x1']; }
@@ -38,8 +40,11 @@ class Mapper_MyTable extends Mapper
 {
     public function getColumns() {
         return array(
-            'x1'    => 'X1',
-            'x2'    => 'X2'
+            'x1'            => 'X1',
+            'x2'            => 'X2',
+            'created_on'    => 'CreatedOn',
+            'updated_on'    => 'UpdatedOn',
+
         );
     }
 }
@@ -95,6 +100,9 @@ class Test_Mapper extends Test_Abstract
 
         $model = new Model_MyTable();
         $model->setX1($this->randValue());
+        $model->setX2($this->randValue());
+        $model->setCreatedOn($this->randValue());
+        $model->setUpdatedOn($this->randValue());
         $this->assertFalse($model->validated);
 
         // try to insert
@@ -103,14 +111,37 @@ class Test_Mapper extends Test_Abstract
         $this->assertTrue($model->validated);
         $this->assertCount(0, $db->updates);
         $this->assertCount(1, $db->inserts);
-        $this->assertEquals(array(array('my_table', array('x1' => $model->getX1(), 'x2' => null))), $db->inserts);
+
+        // check table/regural params
+        $insert = array_pop($db->inserts);
+        $this->assertEquals('my_table', $insert[0]);
+        $this->assertEquals($model->getX1(), $insert[1]['x1']);
+        $this->assertEquals($model->getX2(), $insert[1]['x2']);
+
+        // check created/updated on
+        $this->assertLessThan(1, time() - strtotime($insert[1]['created_on']));
+        $this->assertLessThan(1, time() - strtotime($insert[1]['updated_on']));
+        $this->assertEquals($insert[1]['created_on'], $model->getCreatedOn());
+        $this->assertEquals($insert[1]['updated_on'], $model->getUpdatedOn());
 
         // try to update
-        $model->save();
-        $this->assertCount(1, $db->inserts);
+        $model->setCreatedOn($this->randValue())->setUpdatedOn($this->randValue())->save();
+        $this->assertCount(0, $db->inserts);
         $this->assertCount(1, $db->updates);
-        $this->assertEquals(array(array('my_table', array('x1' => $model->getX1(), 'x2' => null), array('id' => $id))),
-                            $db->updates);
+
+        // check table/regural params
+        $update = array_pop($db->updates);
+        $this->assertEquals('my_table', $update[0]);
+        $this->assertEquals($model->getX1(), $update[1]['x1']);
+        $this->assertEquals($model->getX2(), $update[1]['x2']);
+
+        // check created/updated on
+        $this->assertArrayNotHasKey('created_on', $update);
+        $this->assertLessThan(1, time() - strtotime($insert[1]['updated_on']));
+        $this->assertEquals($insert[1]['updated_on'], $model->getUpdatedOn());
+
+        // check where clause
+        $this->assertEquals(array('id' => $model->getId()), $update[2]);
     }
 
     public function testSearch()
@@ -119,7 +150,7 @@ class Test_Mapper extends Test_Abstract
         Mapper::setDefaultDbAdapter($db);
         $this->assertCount(0, $db->selects);
 
-        $model = new Model_MyTable();
+        $model = new Model_MyTable(false);
         $model->search();
         $this->assertTrue(($select = array_pop($db->selects)) instanceof \DbSelect);
         $this->assertEquals($model->getMapper()->getTableName(), $select->getTable());
