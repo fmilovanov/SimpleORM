@@ -5,6 +5,7 @@
 
 abstract class Mapper
 {
+    private $__cache = array();
     private static $__dbAdapter;
     protected static $__instances = array();
 
@@ -49,13 +50,17 @@ abstract class Mapper
      */
     public function getModel($data = null)
     {
+        if (is_array($data) && isset($data['id']) && isset($this->__cache[$data['id']]))
+            return $this->__cache[$data['id']];
+
         $class = get_class($this);
         if (preg_match('/^Mapper_/', $class))
             $class = preg_replace('/^Mapper_/', 'Model_', $class);
         else
             throw new \Exception('Cannot determine mapper name');
 
-        return new $class($data);
+        $this->__cache[$data['id']] = new $class($data);
+        return $this->__cache[$data['id']];
     }
 
     public function getTableName()
@@ -117,6 +122,8 @@ abstract class Mapper
         }
         if ($updated_on)
             $model->setUpdatedOn($data['updated_on']);
+
+        $this->__cache[$model->getId()] = $model;
     }
 
     public static function sqlNow()
@@ -149,6 +156,9 @@ abstract class Mapper
 
     public function find($id)
     {
+        if (isset($this->__cache[$id]))
+            return $this->__cache[$id];
+
         $model = $this->getModel(false);
         $model->setId($id);
 
@@ -162,8 +172,19 @@ abstract class Mapper
         return $model->search($order);
     }
 
-    public function delete(\Model $model, $herd = false)
+    public function delete(\Model $model, $hard = false)
     {
 
+    }
+
+    public function clearCache()
+    {
+        $this->__cache = array();
+    }
+
+    public static function clearAllCaches()
+    {
+        foreach (self::$__instances as $mapper)
+            $mapper->clearCache();
     }
 }

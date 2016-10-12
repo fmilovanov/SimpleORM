@@ -3,7 +3,9 @@
  * @author Felix A. Milovanov
  */
 require_once(__DIR__ . '/Abstract.php');
+require_once(__DIR__ . '/models/Model/SimpleModel.php');
 require_once(__DIR__ . '/models/Model/ComplexModel.php');
+require_once(__DIR__ . '/models/Mapper/SimpleModel.php');
 require_once(__DIR__ . '/models/Mapper/ComplexModel.php');
 
 class TestAdapter implements IDbAdapter
@@ -139,5 +141,33 @@ class Test_Mapper extends Test_Abstract
         $this->assertEquals($model->getMapper()->getTableName(), $select->getTable());
         $this->assertEquals(array(array($cond1), array($cond2)), $select->getWhere());
         $this->assertEquals("`$order`", $select->getOrder());
+    }
+
+    public function testCache()
+    {
+        $db = new TestAdapter();
+        $db->count = $id = rand(10, 99);
+        Mapper::setDefaultDbAdapter($db);
+
+        $mapper = Mapper_SimpleModel::getInstance();
+        $this->assertNull($mapper->find($id));
+
+        // save an item
+        $model = new Model_SimpleModel();
+        $model->setX1($this->randValue());
+        $model->setX2($this->randValue());
+        $model->save();
+        $this->assertTrue($mapper->find($id) instanceof Model_SimpleModel);
+
+        // clear cache
+        $mapper->clearCache();
+        $this->assertNull($mapper->find($id));
+
+        // save it again
+        $model->save();
+        $this->assertTrue($mapper->find($id) instanceof Model_SimpleModel);
+
+        Mapper::clearAllCaches();
+        $this->assertNull($mapper->find($id));
     }
 }
