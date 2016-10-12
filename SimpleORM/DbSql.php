@@ -163,9 +163,8 @@ class DbSql implements IDbAdapter
         return $where;
     }
 
-    private function _whereClause(array $data, array &$params, $tbl)
+    private function _whereClause(array $data, array &$params, &$pcount, $tbl)
     {
-        $pcount = 0;
         $SQLStr = '';
         foreach ($data as $cond)
         {
@@ -282,28 +281,62 @@ class DbSql implements IDbAdapter
         $this->getAdapter()->rollBack();
     }
 
+    public function _columns(&$columns, $fields, $table)
+    {
+        foreach ($fields as $field => $alias)
+        {
+            if (is_int($field))
+                $columns[] = "$table.`$alias`";
+            else
+                $columns[] = "$table.`$field` `$alias`";
+        }
+    }
+
     public function query(\DbSelect $select)
     {
+        $columns = array();
         if (is_array($fields = $select->getColumns()))
         {
-            $SQLStr = '';
-            foreach ($fields as $field)
-                $SQLStr .= ", t.`$field`";
-
-            $SQLStr = substr($SQLStr, 2);
+            $this->_columns($columns, $fields, 't');
         }
-        else $SQLStr = '*';
-        $SQLStr = "SELECT $SQLStr FROM `" . $select->getTable() . "` t";
+        else $columns[] = 't.*';
 
-        $params = array();
-        if ($where = $this->_whereClause($select->getWhere(), $params, 't'))
-            $SQLStr .= " WHERE $where";
+        $pcount = 0;
+        $params = $joins = array();
+        foreach ($select->getJoins() as $jalias => $join)
+        {
+            $on = array();
+            foreach ($join->on as $key => $cond)
+            {
+                if (is_array($cond))
+                {
+                    $on[] = "$jalias.`$key` = $cond[0].`$cond[1]`";
+                }
+                elseif ($cond instanceof \DbWhereCond)
+                {
+                    $on[] = $this->_whereOperand($cond, $params, $pcount, $jalias);
+                }
+            }
+            $joins[] = " $join->type JOIN `$join->table` $jalias ON " . implode(' AND ', $on);
+
+            $this->_columns($columns, $join->columns, $jalias);
+        }
+
+        $SQLStr = "SELECT " . implode(', ', $columns) . "\n"
+                . "  FROM `" . $select->getTable() . "` t";
+        if (count($joins))
+            $SQLStr .= "\n" . implode("\n", $joins);
+
+
+
+        if ($where = $this->_whereClause($select->getWhere(), $params, $pcount, 't'))
+            $SQLStr .= "\n WHERE $where";
 
         if ($order = $select->getOrder())
-            $SQLStr .= " ORDER BY $order";
+            $SQLStr .= "\n ORDER BY $order";
 
         if (is_array($limit = $select->getSearchLimit()))
-            $SQLStr .= ' LIMIT ' . ($limit[1] ? ($limit[1] . ', ' . $limit[0]) : $limit[0]);
+            $SQLStr .= "\n LIMIT " . ($limit[1] ? ($limit[1] . ', ' . $limit[0]) : $limit[0]);
 
         $stmt = $this->getAdapter()->prepare($SQLStr);
         $stmt->execute($params);
