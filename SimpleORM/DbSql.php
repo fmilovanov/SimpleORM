@@ -85,7 +85,7 @@ class DbSql implements IDbAdapter
         return $result;
     }
 
-    private function _whereOperand(\DbWhereCond $cond, array &$params, &$pcount)
+    private function _whereOperand(\DbWhereCond $cond, array &$params, &$pcount, $tbl)
     {
         $field = '`' . $cond->key . '`';
         $value = $cond->val1;
@@ -95,7 +95,7 @@ class DbSql implements IDbAdapter
             case \DbSelect::OPERATOR_NE:
                 if (is_null($value))
                 {
-                    $where = "$field IS " . ($cond->operator == \DbSelect::OPERATOR_NE ? "NOT " : "") . "NULL";
+                    $where = "$tbl.$field IS " . ($cond->operator == \DbSelect::OPERATOR_NE ? "NOT " : "") . "NULL";
                     break;
                 }
 
@@ -109,7 +109,7 @@ class DbSql implements IDbAdapter
                 if (!is_scalar($value))
                     throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $cond->key));
 
-                $where = "$field " . self::$op_mapping[$cond->operator] . " :w$pcount";
+                $where = "$tbl.$field " . self::$op_mapping[$cond->operator] . " :w$pcount";
                 $params[":w$pcount"] = $cond->val1;
                 $pcount += 1;
                 break;
@@ -118,15 +118,15 @@ class DbSql implements IDbAdapter
                 $values = $this->_parseSearchArray($field, $value, $pcount, $params, $is_null);
                 if (count($values))
                 {
-                    $where = "$field IN (" . implode(', ' , $values) . ")";
+                    $where = "$tbl.$field IN (" . implode(', ' , $values) . ")";
                     if ($is_null)
                     {
-                        $where = "($field IS NULL OR ($where)";
+                        $where = "($tbl.$field IS NULL OR ($where)";
                     }
                 }
                 elseif ($is_null || !count($values))
                 {
-                    $where = "$field IS NULL";
+                    $where = "$tbl.$field IS NULL";
                 }
                 break;
 
@@ -134,15 +134,15 @@ class DbSql implements IDbAdapter
                 $values = $this->_parseSearchArray($field, $value, $pcount, $params, $is_null);
                 if (count($values))
                 {
-                    $where = "$field NOT IN (" . implode(', ' , $values) . ")";
+                    $where = "$tbl.$field NOT IN (" . implode(', ' , $values) . ")";
                     if ($is_null)
                     {
-                        $where = "$field IS NOT NULL AND $where";
+                        $where = "$tbl.$field IS NOT NULL AND $where";
                     }
                 }
                 elseif ($is_null || !count($values))
                 {
-                    $where = "$field IS NOT NULL";
+                    $where = "$tbl.$field IS NOT NULL";
                 }
                 break;
 
@@ -150,7 +150,7 @@ class DbSql implements IDbAdapter
                 if (!is_scalar($cond->val1) || !is_scalar($cond->val2))
                     throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $cond->key));
 
-                $where = "$field BETWEEN :w$pcount AND :w" . ($pcount + 1);
+                $where = "$tbl.$field BETWEEN :w$pcount AND :w" . ($pcount + 1);
                 $params[":w$pcount"] = $cond->val1;
                 $params[":w" . ($pcount + 1)] = $cond->val2;
                 $pcount += 1;
@@ -163,9 +163,9 @@ class DbSql implements IDbAdapter
         return $where;
     }
 
-    private function _whereClause(array $data, array &$params)
+    private function _whereClause(array $data, array &$params, $tbl)
     {
-        $i = 0;
+        $pcount = 0;
         $SQLStr = '';
         foreach ($data as $cond)
         {
@@ -178,7 +178,7 @@ class DbSql implements IDbAdapter
                 if (!($cond instanceof \DbWhereCond))
                     throw new Exception(self::ERROR_WHERE_TYPE);
 
-                $operands[] = $this->_whereOperand($cond, $params, $i);
+                $operands[] = $this->_whereOperand($cond, $params, $pcount, $tbl);
             }
 
             if (count($operands) > 1)
@@ -285,8 +285,8 @@ class DbSql implements IDbAdapter
     public function query(\DbSelect $select)
     {
         $params = array();
-        $SQLStr = "SELECT * FROM `" . $select->getTable() . "`";
-        if ($where = $this->_whereClause($select->getWhere(), $params))
+        $SQLStr = "SELECT * FROM `" . $select->getTable() . "` t";
+        if ($where = $this->_whereClause($select->getWhere(), $params, 't'))
             $SQLStr .= " WHERE $where";
 
         if ($order = $select->getOrder())
