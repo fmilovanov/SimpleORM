@@ -11,6 +11,7 @@ class DbSql implements IDbAdapter
     const ERROR_WHERE_TYPE      = 'Where type mismatch';
     const ERROR_OPERATOR        = 'Unknown operator';
     const ERROR_ORDER           = 'bad order';
+    const ERROR_DELETE_ALL      = 'delete all is not allowed';
 
     private static $op_mapping = array(
         \DbSelect::OPERATOR_EQ      => '=',
@@ -238,9 +239,28 @@ class DbSql implements IDbAdapter
             $this->_throw($stmt, $SQLStr, $params);
     }
 
-    public function delete($table, array $where)
+    public function delete($table, array $where, $allow_delete_all = false)
     {
-        ;
+        $i = 0;
+        $SQLStr = '';
+        $params = array();
+        foreach ($where as $key => $value)
+        {
+            if (!is_scalar($value))
+                throw new \Exception(sprintf(self::ERROR_KEY_NOT_SCALAR, $key));
+
+            $SQLStr .= " AND `$key` = :w$i";
+            $params[":w$i"] = $value;
+            $i += 1;
+        }
+
+        if (empty($params) && !$allow_delete_all)
+            throw new \Exception(self::ERROR_DELETE_ALL);
+
+        $SQLStr = "DELETE FROM `$table`" . (empty($params) ? '' : (' WHERE ' . substr($SQLStr, 5)));
+        $stmt = $this->getAdapter()->prepare($SQLStr);
+        if (!$stmt->execute($params))
+            $this->_throw($stmt, $SQLStr, $params);
     }
 
     public function lastInsertId() {

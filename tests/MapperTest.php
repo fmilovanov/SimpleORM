@@ -27,7 +27,7 @@ class TestAdapter implements IDbAdapter
         $this->updates[] = array($table, $data, $where);
     }
 
-    public function delete($table, array $where)
+    public function delete($table, array $where, $allow_delete_all = false)
     {
         $this->deletes[] = array($table, $where);
     }

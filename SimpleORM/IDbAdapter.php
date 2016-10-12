@@ -9,7 +9,7 @@ Interface IDbAdapter
 
     public function update($table, array $data, array $where);
 
-    public function delete($table, array $where);
+    public function delete($table, array $where, $allow_delete_all = false);
 
     public function lastInsertId();
 

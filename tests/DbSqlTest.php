@@ -208,6 +208,52 @@ class Test_DbSql extends Test_Abstract
         }
     }
 
+    public function testDelete()
+    {
+        $pdo = new TestPDO();
+        $adapter = new DbSql($pdo);
+
+        $SQLStr = '';
+        $where = $sql = $params = array();
+        for ($i = rand(2, 7); $i >= 0; $i--)
+        {
+            $key = 'x' . rand(100, 999);
+            $val = $this->randValue();
+
+            $SQLStr .= " AND `$key` = :w" . count($params);
+            $params[':w' . count($params)] = $val;
+            $where[$key] = $val;
+        }
+
+        $table = 'tbl' . rand(100, 999);
+        $SQLStr = "DELETE FROM `$table` WHERE " . substr($SQLStr, 5);
+
+        $adapter->delete($table, $where);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals($SQLStr, $stmt->sql);
+        $this->assertEquals($params, $stmt->params);
+        $this->assertNull($stmt->fetch_all);
+
+        // try empty delete
+        try
+        {
+            $adapter->delete($table, array());
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSql::ERROR_DELETE_ALL, $e->getMessage());
+            $this->assertCount(0, $pdo->statements);
+        }
+
+        // confirmed empty delete
+        $adapter->delete($table, array(), true);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("DELETE FROM `$table`", $stmt->sql);
+        $this->assertEquals(array(), $stmt->params);
+        $this->assertNull($stmt->fetch_all);
+    }
+
     public function testQueryEq()
     {
         $pdo = new TestPDO();
