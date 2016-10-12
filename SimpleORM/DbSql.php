@@ -284,8 +284,18 @@ class DbSql implements IDbAdapter
 
     public function query(\DbSelect $select)
     {
+        if (is_array($fields = $select->getColumns()))
+        {
+            $SQLStr = '';
+            foreach ($fields as $field)
+                $SQLStr .= ", t.`$field`";
+
+            $SQLStr = substr($SQLStr, 2);
+        }
+        else $SQLStr = '*';
+        $SQLStr = "SELECT $SQLStr FROM `" . $select->getTable() . "` t";
+
         $params = array();
-        $SQLStr = "SELECT * FROM `" . $select->getTable() . "` t";
         if ($where = $this->_whereClause($select->getWhere(), $params, 't'))
             $SQLStr .= " WHERE $where";
 

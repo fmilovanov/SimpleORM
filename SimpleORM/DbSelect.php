@@ -30,16 +30,32 @@ class DbSelect
     const ERROR_WHERE       = 'unknown where';
     const ERROR_WHERE_OR    = 'no where to add to or';
     const ERROR_ORDER       = 'bad order';
+    const ERROR_EMPTY       = 'empty columns';
 
     private $_table;
+    private $_columns;
     private $_where = array();
     private $_order;
     private $_search_limit;
 
-    public function __construct($table)
+    public function __construct($table, array $columns = null)
     {
         if (!is_string($table) || !preg_match('/^[a-z]/i', $table))
             throw new Exception(self::ERROR_TABLE);
+
+        if (is_array($columns))
+        {
+            if (empty($columns))
+                throw new \Exception(self::ERROR_EMPTY);
+
+            foreach ($columns as $field)
+            {
+                if (!is_string($field) || !$field || !preg_match('/^[a-z]/i', $field))
+                    throw new \Exception(self::ERROR_NOT_SCALAR);
+            }
+
+            $this->_columns = $columns;
+        }
 
         $this->_table = $table;
     }
@@ -47,6 +63,11 @@ class DbSelect
     public function getTable()
     {
         return $this->_table;
+    }
+
+    public function getColumns()
+    {
+        return $this->_columns;
     }
 
     private function _where($key, $value)

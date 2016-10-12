@@ -254,6 +254,33 @@ class Test_DbSql extends Test_Abstract
         $this->assertNull($stmt->fetch_all);
     }
 
+    public function testQueryFrom()
+    {
+        $pdo = new TestPDO();
+        $adapter = new DbSql($pdo);
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999));
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT * FROM `$tbl` t", $stmt->sql);
+
+        // generate columns
+        $fields = '';
+        $columns = array();
+        for ($i = rand(3, 8); $i >= 0; $i--)
+        {
+            $col = $columns[] = 'x' . rand($i * 10, $i * 10 + 10);
+            $fields .= ", t.`$col`";
+        }
+        $select = new \DbSelect($tbl = 'tbl' . rand(100, 999), $columns);
+        $adapter->query($select);
+        $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
+        $this->assertEquals("SELECT " . substr($fields, 2) . " FROM `$tbl` t", $stmt->sql);
+
+
+
+
+    }
+
     public function testQueryEq()
     {
         $pdo = new TestPDO();

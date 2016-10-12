@@ -11,6 +11,7 @@ class Test_DbSelect extends Test_Abstract
     {
         $select = new \DbSelect($tbl = 'table' . rand(100, 999));
         $this->assertEquals($tbl, $select->getTable());
+        $this->assertNull($select->getColumns());
 
         // try bad usecases
         foreach (array(null, 0, false, '123table', array('wow!')) as $tbl)
@@ -25,6 +26,29 @@ class Test_DbSelect extends Test_Abstract
                 $this->assertEquals(\DbSelect::ERROR_TABLE, $e->getMessage());
             }
         }
+
+        // generate coumns
+        $columns = array();
+        for ($i = rand(3, 8); $i >= 0; $i--)
+            $columns[] = 'x' . rand($i * 10, $i * 10 + 10);
+        $select = new \DbSelect($tbl = 'table' . rand(100, 999), $columns);
+        $this->assertEquals($tbl, $select->getTable());
+        $this->assertEquals($columns, $select->getColumns());
+
+        // try bad columns
+        foreach (array(null, '', array(), false, '123x') as $column)
+        {
+            try
+            {
+                $select = new \DbSelect($tbl, array($column));
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(\DbSelect::ERROR_NOT_SCALAR, $e->getMessage());
+            }
+        }
+
     }
 
 
