@@ -94,9 +94,9 @@ abstract class Model
         return $this->getMapper()->search($this, $order);
     }
 
-    public function delete($head = false)
+    public function delete($hard = false)
     {
-        $this->getMapper()->delete($this);
+        $this->getMapper()->delete($this, $hard);
     }
 
     // some getters/setters

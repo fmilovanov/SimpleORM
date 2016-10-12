@@ -9,6 +9,8 @@ Interface IDbAdapter
 
     public function update($table, array $data, array $where);
 
+    public function delete($table, array $where);
+
     public function lastInsertId();
 
     public function beginTransaction();

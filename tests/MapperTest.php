@@ -13,6 +13,7 @@ class TestAdapter implements IDbAdapter
     public $count = 1;
     public $inserts = array();
     public $updates = array();
+    public $deletes = array();
     public $selects = array();
 
 
@@ -24,6 +25,11 @@ class TestAdapter implements IDbAdapter
     public function update($table, array $data, array $where)
     {
         $this->updates[] = array($table, $data, $where);
+    }
+
+    public function delete($table, array $where)
+    {
+        $this->deletes[] = array($table, $where);
     }
 
     public function lastInsertId()
@@ -101,6 +107,103 @@ class Test_Mapper extends Test_Abstract
 
         // check where clause
         $this->assertEquals(array('id' => $model->getId()), $update[2]);
+    }
+
+    public function testDeleteNoDeletedOn()
+    {
+        $db = new TestAdapter();
+        Mapper::setDefaultDbAdapter($db);
+
+        $mapper = \Mapper_SimpleModel::getInstance();
+        $model = new Model_SimpleModel();
+        $model->setX1($this->randValue());
+
+        // try to delete w/out save
+        try
+        {
+            $model->delete();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\Mapper::ERROR_NO_ID, $e->getMessage());
+            $this->assertCount(0, $db->deletes);
+            $this->assertCount(0, $db->updates);
+        }
+
+        // try soft delete on non-soft-deleteable
+        $model->save();
+        $this->assertTrue($mapper->find($model->getId()) instanceof Model_SimpleModel);
+        try
+        {
+            $model->delete();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\Mapper::ERROR_SOFT_DELETE, $e->getMessage());
+            $this->assertCount(0, $db->deletes);
+            $this->assertCount(0, $db->updates);
+            $this->assertTrue($mapper->find($model->getId()) instanceof Model_SimpleModel);
+        }
+
+        // try hard delete
+        $model->delete(true);
+        $this->assertNull($mapper->find($model->getId()));
+        $this->assertNull($mapper->find($model->getId()));
+        $this->assertCount(0, $db->updates);
+        $this->assertCount(1, $db->deletes);
+        $this->assertEquals($mapper->getTableName(), $db->deletes[0][0]);
+        $this->assertEquals(array('id' => $model->getId()), $db->deletes[0][1]);
+    }
+
+    public function testDeleteWithDeletedOn()
+    {
+        $db = new TestAdapter();
+        Mapper::setDefaultDbAdapter($db);
+
+        $mapper = \Mapper_ComplexModel::getInstance();
+        $model = new Model_ComplexModel();
+        $model->setX1($this->randValue());
+
+        // try to delete w/out save
+        try
+        {
+            $model->delete();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\Mapper::ERROR_NO_ID, $e->getMessage());
+            $this->assertCount(0, $db->deletes);
+            $this->assertCount(0, $db->updates);
+        }
+
+        // soft delete
+        $model->save();
+        $this->assertTrue($mapper->find($model->getId()) instanceof Model_ComplexModel);
+        $this->assertNull($model->getDeletedOn());
+        $model->delete();
+        $this->assertLessThan(1, time() - strtotime($model->getDeletedOn()));
+        $this->assertCount(0, $db->deletes);
+        $this->assertCount(1, $db->updates);
+        $this->assertNull($mapper->find($model->getId()));
+        $this->assertEquals($mapper->getTableName(), $db->updates[0][0]);
+        $this->assertEquals(array('deleted_on' => $model->getDeletedOn()), $db->updates[0][1]);
+        $this->assertEquals(array('id' => $model->getId()), $db->updates[0][2]);
+
+        // save again
+        $model->setDeletedOn(null)->save();
+        $this->assertCount(2, $db->updates);
+        $this->assertTrue($mapper->find($model->getId()) instanceof Model_ComplexModel);
+
+        // hard delete
+        $model->delete(true);
+        $this->assertCount(2, $db->updates);
+        $this->assertCount(1, $db->deletes);
+        $this->assertNull($mapper->find($model->getId()));
+        $this->assertEquals($mapper->getTableName(), $db->deletes[0][0]);
+        $this->assertEquals(array('id' => $model->getId()), $db->deletes[0][1]);
     }
 
     public function testSearch()

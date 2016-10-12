@@ -5,6 +5,9 @@
 
 abstract class Mapper
 {
+    const ERROR_NO_ID           = 'No ID in this model';
+    const ERROR_SOFT_DELETE     = 'This object does not support soft delete';
+
     private $__cache = array();
     private static $__dbAdapter;
     protected static $__instances = array();
@@ -174,7 +177,27 @@ abstract class Mapper
 
     public function delete(\Model $model, $hard = false)
     {
+        if (!$model->getId())
+            throw new \Exception(self::ERROR_NO_ID);
 
+        if ($hard)
+        {
+            $this->getDbAdapter()->delete($this->getTableName(), array('id' => $model->getId()));
+        }
+        else
+        {
+            if (!array_key_exists('deleted_on', $this->getColumns()))
+                throw new \Exception(self::ERROR_SOFT_DELETE);
+
+            $now = self::sqlNow();
+            $this->getDbAdapter()->update($this->getTableName(), array('deleted_on' => $now),
+                                          array('id' => $model->getId()));
+
+            $model->setDeletedOn($now);
+        }
+
+        if (isset($this->__cache[$model->getId()]))
+            unset($this->__cache[$model->getId()]);
     }
 
     public function clearCache()

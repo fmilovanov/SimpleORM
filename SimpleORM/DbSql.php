@@ -238,6 +238,11 @@ class DbSql implements IDbAdapter
             $this->_throw($stmt, $SQLStr, $params);
     }
 
+    public function delete($table, array $where)
+    {
+        ;
+    }
+
     public function lastInsertId() {
         ;
     }

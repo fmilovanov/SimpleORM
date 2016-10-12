@@ -12,7 +12,8 @@ class Model_ComplexModel extends Model
         'x1'            => null,
         'x2'            => null,
         'created_on'    => null,
-        'updated_on'    => null
+        'updated_on'    => null,
+        'deleted_on'    => null
     );
 
     public function getX1() { return $this->_data['x1']; }
@@ -29,6 +30,14 @@ class Model_ComplexModel extends Model
         return $this;
     }
 
+    public function getDeletedOn() { return $this->_data['deleted_on']; }
+    public function setDeletedOn($val)
+    {
+        $this->_data['deleted_on'] = $val;
+        return $this;
+    }
+
+    // other functions
     public function validate()
     {
         $this->validated = true;
