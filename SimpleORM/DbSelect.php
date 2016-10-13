@@ -9,6 +9,14 @@ class DbWhereCond
     public $operator;
     public $val1;
     public $val2;
+
+    public function __construct($key = null, $operator = null, $val1 = null, $val2 = null)
+    {
+        $this->key = $key;
+        $this->operator = $operator;
+        $this->val1 = $val1;
+        $this->val2 = $val2;
+    }
 }
 
 class DbJoin
@@ -16,34 +24,17 @@ class DbJoin
     const TYPE_INNER    = 'INNER';
     const TYPE_LEFT     = ' LEFT';
 
-    const ERROR_TYPE    = 'wrong type';
-    const ERROR_TABLE   = 'wrong table name';
     const ERROR_COLUMNS = 'wrong join columns';
     const ERROR_ON      = 'wrong join on';
 
     public $type;
     public $table;
-    public $columns = array();
     public $on;
+    public $columns = array();
 
-    public function __construct($type, $table, array $on, $columns)
+    public function __construct($type, $table, array $on, $columns = array())
     {
-        if (!is_array(array(self::TYPE_INNER, self::TYPE_LEFT)))
-                throw new \Exception(self::ERROR_TYPE);
         $this->type = $type;
-
-        // table name
-        if (is_array($table))
-        {
-            if (!$this->isName($table[0]) || !$this->isName($table[1]))
-                throw new \Exception(self::ERROR_TABLE);
-
-            $table = array($table[0], $table[1]);
-        }
-        elseif (!$this->isName($table))
-        {
-            throw new \Exception(self::ERROR_TABLE);
-        }
         $this->table = $table;
 
         // on clause
@@ -73,18 +64,6 @@ class DbJoin
             else throw new \Exception(self::ERROR_ON);
         }
 
-        // columns
-        if ($columns !== '*')
-        {
-            if (!is_array($columns))
-                throw new \Exception(self::ERROR_JOIN_COLUMNS);
-
-            foreach ($columns as $column)
-            {
-                if (!$this->isName($table))
-                    throw new \Exception(self::ERROR_JOIN_COLUMNS);
-            }
-        }
         $this->columns = $columns;
     }
 
@@ -116,8 +95,10 @@ class DbSelect
     const ERROR_ORDER       = 'bad order';
     const ERROR_EMPTY       = 'empty columns';
 
+    const ERROR_JOIN_TABLE  = 'bad table name';
     const ERROR_JOINED      = 'you already have a join on this table';
     const ERROR_JOIN_LEFT   = 'no inner joins after left join';
+    const ERROR_JOIN_COLUMS = 'bad join columns';
 
     private $_table;
     private $_columns;
@@ -185,6 +166,26 @@ class DbSelect
             }
         }
 
+        if (!$this->isName($table[0]))
+            throw new \Exception(self::ERROR_JOIN_TABLE);
+
+
+
+        // columns
+        if ($columns !== '*')
+        {
+            if (!is_array($columns))
+                throw new \Exception(self::ERROR_JOIN_COLUMS);
+
+            foreach ($columns as $key => $alias)
+            {
+                if (!is_scalar($key) || !$this->isName($alias))
+                    throw new \Exception(self::ERROR_JOIN_COLUMS);
+
+                if (!is_int($key) && !$this->isName($key))
+                    throw new \Exception(self::ERROR_JOIN_COLUMS);
+            }
+        }
 
         $this->_joins[$table[1]] = new \DbJoin($type, $table[0], $on, $columns);
     }
@@ -290,12 +291,7 @@ class DbSelect
      */
     public static function cond($operator, $value, $value2 = null)
     {
-        $cond = new \DbWhereCond();
-        $cond->operator = $operator;
-        $cond->val1 = $value;
-        $cond->val2 = $value2;
-
-        return $cond;
+        return new \DbWhereCond(null, $operator, $value, $value2);
     }
 
     /**

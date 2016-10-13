@@ -293,4 +293,88 @@ class Test_DbSelect extends Test_Abstract
         $this->assertEquals("`$order`, `$order2` ASC", $select->getOrder());
     }
 
+    public function testJoin()
+    {
+        $select = new \DbSelect($table = 'tbl' . rand(100, 299));
+        $this->assertCount(0, $select->getJoins());
+
+        // add join
+        $select->join($jtbl1 = 'tbl' . rand(100, 199), array($k1 = 'k' . rand(10, 19) => $v1 = rand(100, 199)));
+        $this->assertCount(1, $joins = $select->getJoins());
+        $this->assertArrayHasKey('j0', $joins);
+        $join = $joins['j0'];
+        $this->assertTrue($join instanceof \DbJoin);
+        $this->assertEquals(\DbJoin::TYPE_INNER, $join->type);
+        $this->assertEquals($jtbl1, $join->table);
+        $this->assertCount(0, $join->columns);
+        $this->assertCount(1, $join->on);
+        $this->assertArrayHasKey($k1, $join->on);
+        $this->assertEquals(new \DbWhereCond($k1, \DbSelect::OPERATOR_EQ, $v1), $join->on[$k1]);
+
+        // add join to a table, aliased
+        $select->joinLeft(array($jtbl2 = 'tbl' . rand(200, 299), $a2 = 'a' . rand(200, 299)),
+                          array($k2 = 'k' . rand(20, 29) => array($jtbl1, $k1),
+                                $k3 = 'k' . rand(30, 39) => \DbSelect::ne($v2 = rand(200, 299)),
+                                $k4 = 'k' . rand(40, 49) => \DbSelect::lte($v3 = rand(300, 399))));
+        $this->assertCount(2, $joins = $select->getJoins());
+        $this->assertArrayHasKey($a2, $joins);
+        $join = $joins[$a2];
+        $this->assertEquals(\DbJoin::TYPE_LEFT, $join->type);
+        $this->assertEquals($jtbl2, $join->table);
+        $this->assertCount(0, $join->columns);
+        $this->assertCount(3, $join->on);
+        $this->assertEquals(array($jtbl1, $k1), $join->on[$k2]);
+        $this->assertEquals(new \DbWhereCond($k3, \DbSelect::OPERATOR_NE, $v2), $join->on[$k3]);
+        $this->assertEquals(new \DbWhereCond($k4, \DbSelect::OPERATOR_LTE, $v3), $join->on[$k4]);
+
+        // add same table, another alias
+        $select->joinLeft(array($jtbl2, $a3 = 'a' . rand(300, 399)), array($k1 => $this->randValue()));
+        $this->assertCount(3, $joins = $select->getJoins());
+        $this->assertArrayHasKey($a3, $joins);
+
+        // try to use same alias
+        try
+        {
+            $select->joinLeft(array($jtbl2, $a3), array($k1 => $this->randValue()));
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSelect::ERROR_JOINED, $e->getMessage());
+            $this->assertCount(3, $joins = $select->getJoins());
+        }
+
+        // try to add inner join after left one
+        try
+        {
+            $select->join('tbl' . rand(300, 399), array($k1 => $this->randValue()));
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbSelect::ERROR_JOIN_LEFT, $e->getMessage());
+            $this->assertCount(3, $joins = $select->getJoins());
+        }
+
+        // bad table name
+        foreach (array(null, false, true, array(), '55a') as $val)
+        {
+            try
+            {
+                $select->joinLeft(array($val, 'a' . rand(400, 499)), array($k1 => $this->randValue()));
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(\DbSelect::ERROR_JOIN_TABLE, $e->getMessage());
+                $this->assertCount(3, $joins = $select->getJoins());
+            }
+        }
+
+        /// test columns clause
+        $select = new \DbSelect($table);
+        $select->join($jtbl1, array('k1' => rand(1009, 9999)), array('x1', 'x2'));
+        $select->join($jtbl1, array('k1' => rand(1009, 9999)), array('x1' => 'a1', 'x2' => 'a2'));
+    }
+
 }

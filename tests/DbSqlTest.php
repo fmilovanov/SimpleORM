@@ -950,10 +950,10 @@ class Test_DbSql extends Test_Abstract
         $this->assertEquals(array(':w0' => $v1, ':w1' => $v2, ':w2' => $v3), $stmt->params);
 
         // add left join
-        $select->joinLeft($jtbl2, array($k6 = 'k' . rand(60, 69) => array($jtbl1, $k1)), array('x1'));
+        $select->joinLeft($jtbl2, array($k6 = 'k' . rand(60, 69) => array($jtbl1, $k1)), array('x1', 'x2' => 'x3'));
         $adapter->query($select);
         $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
-        $this->assertQuery("SELECT t.*, j3.`x1` FROM `$tbl` t INNER JOIN `$jtbl1` j0 ON j0.`$k1` = :w0" .
+        $this->assertQuery("SELECT t.*, j3.`x1`, j3.`x2` `x3` FROM `$tbl` t INNER JOIN `$jtbl1` j0 ON j0.`$k1` = :w0" .
                            " INNER JOIN `$jtbl2` j1 ON j1.`$k2` = $jtbl1.`$k1` AND j1.`$k3` = :w1" .
                            " INNER JOIN `$jtbl2` $a1 ON $a1.`$k4` = $jtbl1.`$k1`" .
                            "  LEFT JOIN `$jtbl2` j3 ON j3.`$k6` = $jtbl1.`$k1`" .
