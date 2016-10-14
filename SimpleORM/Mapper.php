@@ -7,6 +7,8 @@ abstract class Mapper
 {
     const ERROR_NO_ID           = 'No ID in this model';
     const ERROR_SOFT_DELETE     = 'This object does not support soft delete';
+    const ERROR_JOIN            = 'Incorrect join - cannot load object back';
+    const ERROR_JOIN_COLUMN     = 'Join column setter not found';
 
     private $__cache = array();
     private static $__dbAdapter;
@@ -89,7 +91,8 @@ abstract class Mapper
 
         $data = array();
         $created_on = $updated_on = false;
-        foreach ($this->getColumns() as $key => $method)
+        $columns = $this->getColumns();
+        foreach ($columns as $key => $method)
         {
             $getter = 'get' . $method;
             $setter = 'set' . $method;
@@ -126,6 +129,26 @@ abstract class Mapper
         }
         if ($updated_on)
             $model->setUpdatedOn($data['updated_on']);
+
+        if (method_exists($this, 'addJoins'))
+        {
+            // make a request
+            $select = new \DbSelect($this->getTableName(), array());
+            $select->where('id', $model->getId());
+            $this->addJoins($select);
+
+            $data = $this->getDbAdapter()->query($select);
+            if (count($data) != 1)
+                throw new Exception(self::ERROR_JOIN);
+
+            foreach (array_pop($data) as $key => $value)
+            {
+                $setter = 'set' . str_replace(' ', '', ucwords(str_replace('_', ' ', $key)));
+                if (!method_exists($model, $setter))
+                    throw new Exception(self::ERROR_JOIN_COLUMN);
+                $model->$setter($value);
+            }
+        }
 
         $this->__cache[$model->getId()] = $model;
     }

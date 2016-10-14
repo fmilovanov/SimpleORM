@@ -5,8 +5,10 @@
 require_once(__DIR__ . '/Abstract.php');
 require_once(__DIR__ . '/models/Model/SimpleModel.php');
 require_once(__DIR__ . '/models/Model/ComplexModel.php');
+require_once(__DIR__ . '/models/Model/JoinModel.php');
 require_once(__DIR__ . '/models/Mapper/SimpleModel.php');
 require_once(__DIR__ . '/models/Mapper/ComplexModel.php');
+require_once(__DIR__ . '/models/Mapper/JoinModel.php');
 
 class TestAdapter implements IDbAdapter
 {
@@ -19,6 +21,7 @@ class TestAdapter implements IDbAdapter
     public $commits = 0;
     public $rollbacks = 0;
 
+    public $data = array();
 
     public function insert($table, array $data)
     {
@@ -47,7 +50,7 @@ class TestAdapter implements IDbAdapter
     public function query(\DbSelect $select)
     {
         $this->selects[] = $select;
-        return array();
+        return empty($this->data) ? array() : array(array_pop($this->data));
     }
 }
 
@@ -110,6 +113,32 @@ class Test_Mapper extends Test_Abstract
 
         // check where clause
         $this->assertEquals(array('id' => $model->getId()), $update[2]);
+    }
+
+    public function testJoinOnSave()
+    {
+        $db = new TestAdapter();
+        $db->data[] = array('id' => $db->count,  'status' => $status = $this->randValue());
+        Mapper::setDefaultDbAdapter($db);
+
+        $model = new Model_JoinModel();
+        $model->setStatusId($status_id = rand(100, 999));
+
+        // create new model and check
+        $model->save();
+        $this->assertCount(1, $db->selects);
+        $select = array_pop($db->selects);
+        $this->assertCount(1, $joins = $select->getJoins());
+        $join = array_pop($joins);
+        $this->assertEquals('statuses', $join->table);
+        $this->assertEquals(array('id' => array($model->getMapper()->getTableName(), 'status_id')), $join->on);
+        $this->assertEquals(array('name' => 'status'), $join->columns);
+        $this->assertEquals($status, $model->getStatus());
+
+        // update model
+        $db->data[] = array('id' => $db->count,  'status' => $status2 = $this->randValue() . '.' . rand(100, 999));
+        $model->save();
+        $this->assertEquals($status2, $model->getStatus());
     }
 
     public function testDeleteNoDeletedOn()
@@ -323,11 +352,5 @@ class Test_Mapper extends Test_Abstract
         $this->assertEquals(1, $db->begins);
         $this->assertEquals(1, $db->commits);
         $this->assertEquals(0, $db->rollbacks);
-
-
-
-
-
-
     }
 }

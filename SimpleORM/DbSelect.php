@@ -119,9 +119,6 @@ class DbSelect
 
         if (is_array($columns))
         {
-            if (empty($columns))
-                throw new \Exception(self::ERROR_EMPTY);
-
             foreach ($columns as $field)
             {
                 if (!$this->isName($field))
