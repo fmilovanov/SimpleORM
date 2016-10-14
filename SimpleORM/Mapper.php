@@ -10,6 +10,7 @@ abstract class Mapper
 
     private $__cache = array();
     private static $__dbAdapter;
+    private static $__transaction_id;
     protected static $__instances = array();
 
     private function __construct() { }
@@ -199,6 +200,36 @@ abstract class Mapper
         if (isset($this->__cache[$model->getId()]))
             unset($this->__cache[$model->getId()]);
     }
+
+    public function beginTransaction()
+    {
+        if (!is_null(self::$__transaction_id))
+            return null;
+
+        self::$__transaction_id = md5(microtime(true) . rand(10000, 99999));
+        $this->getDbAdapter()->beginTransaction();
+        return self::$__transaction_id;
+    }
+
+    public function commit($tid)
+    {
+        if ($tid != self::$__transaction_id)
+            return;
+
+        $this->getDbAdapter()->commit();
+        self::$__transaction_id = null;
+    }
+
+    public function rollback($tid)
+    {
+        if ($tid != self::$__transaction_id)
+            return;
+
+        $this->getDbAdapter()->rollBack();
+        self::$__transaction_id = null;
+    }
+
+
 
     public function clearCache()
     {

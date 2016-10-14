@@ -15,6 +15,9 @@ class TestAdapter implements IDbAdapter
     public $updates = array();
     public $deletes = array();
     public $selects = array();
+    public $begins = 0;
+    public $commits = 0;
+    public $rollbacks = 0;
 
 
     public function insert($table, array $data)
@@ -37,9 +40,9 @@ class TestAdapter implements IDbAdapter
         return $this->count++;
     }
 
-    public function beginTransaction() { }
-    public function commit() { }
-    public function rollback() { }
+    public function beginTransaction() { $this->begins += 1; }
+    public function commit() { $this->commits += 1; }
+    public function rollback() { $this->rollbacks += 1; }
 
     public function query(\DbSelect $select)
     {
@@ -272,5 +275,59 @@ class Test_Mapper extends Test_Abstract
 
         Mapper::clearAllCaches();
         $this->assertNull($mapper->find($id));
+    }
+
+    public function testTransactions()
+    {
+        $db = new TestAdapter();
+        Mapper::setDefaultDbAdapter($db);
+
+        $mapper1 = \Mapper_SimpleModel::getInstance();
+        $mapper2 = \Mapper_ComplexModel::getInstance();
+        $this->assertEquals(0, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // start transaction
+        $tid = $mapper1->beginTransaction();
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // start another transaction
+        $tid2 = $mapper1->beginTransaction();
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // start transaction with another mapper
+        $tid3 = $mapper2->beginTransaction();
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // commit 3rd one
+        $mapper2->commit($tid3);
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // commit 2nd one
+        $mapper1->commit($tid2);
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(0, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+        // commit 1st one
+        $mapper1->commit($tid);
+        $this->assertEquals(1, $db->begins);
+        $this->assertEquals(1, $db->commits);
+        $this->assertEquals(0, $db->rollbacks);
+
+
+
+
+
+
     }
 }
