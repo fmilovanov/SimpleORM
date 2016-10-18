@@ -11,6 +11,7 @@ abstract class Mapper
     const ERROR_JOIN_COLUMN     = 'Join column setter not found';
 
     private $__cache = array();
+    private static $__user;
     private static $__dbAdapter;
     private static $__transaction_id;
     protected static $__instances = array();
@@ -91,7 +92,9 @@ abstract class Mapper
 
         $data = array();
         $created_on = $updated_on = false;
+        $created_by = $updated_by = false;
         $columns = $this->getColumns();
+        $user = $this->getUser();
         foreach ($columns as $key => $method)
         {
             $getter = 'get' . $method;
@@ -106,9 +109,30 @@ abstract class Mapper
                     $created_on = true;
                     break;
 
+                case 'created_by':
+                    if ($model->getId())
+                        break;
+
+                    if ($user)
+                    {
+                        $data[$key] = $user->getId();
+                        $created_by = $setter;
+                    }
+                    else $data[$key] = $model->$getter();
+                    break;
+
                 case 'updated_on':
                     $data[$key] = self::sqlNow();
-                    $updated_on = true;
+                    $updated_on = $setter;
+                    break;
+
+                case 'updated_by':
+                    if ($user)
+                    {
+                        $data[$key] = $user->getId();
+                        $updated_by = $setter;
+                    }
+                    else $data[$key] = $model->$getter();
                     break;
 
                 default:
@@ -126,9 +150,15 @@ abstract class Mapper
             $model->setId(self::getDbAdapter()->lastInsertId());
             if ($created_on)
                 $model->setCreatedOn($data['created_on']);
+            if ($created_by)
+            {
+                $model->$created_by($data['created_by']);
+            }
         }
         if ($updated_on)
-            $model->setUpdatedOn($data['updated_on']);
+            $model->$updated_on($data['updated_on']);
+        if ($updated_by)
+            $model->$updated_by($data['updated_by']);
 
         if (method_exists($this, 'addJoins'))
         {
@@ -263,5 +293,18 @@ abstract class Mapper
     {
         foreach (self::$__instances as $mapper)
             $mapper->clearCache();
+    }
+
+    public static function setUser(\Model $user)
+    {
+        self::$__user = $user;
+    }
+
+    /**
+     * @return \Model | null
+     */
+    public function getUser()
+    {
+        return self::$__user;
     }
 }

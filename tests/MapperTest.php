@@ -6,6 +6,7 @@ require_once(__DIR__ . '/Abstract.php');
 require_once(__DIR__ . '/models/Model/SimpleModel.php');
 require_once(__DIR__ . '/models/Model/ComplexModel.php');
 require_once(__DIR__ . '/models/Model/JoinModel.php');
+require_once(__DIR__ . '/models/Model/User.php');
 require_once(__DIR__ . '/models/Mapper/SimpleModel.php');
 require_once(__DIR__ . '/models/Mapper/ComplexModel.php');
 require_once(__DIR__ . '/models/Mapper/JoinModel.php');
@@ -113,6 +114,54 @@ class Test_Mapper extends Test_Abstract
 
         // check where clause
         $this->assertEquals(array('id' => $model->getId()), $update[2]);
+    }
+
+    public function testCreatedUpdatedBy()
+    {
+        $db = new TestAdapter();
+        Mapper::setDefaultDbAdapter($db);
+
+        $model = new \Model_ComplexModel();
+        $model->setCreatedBy($cb = rand(100, 499));
+        $model->setUpdatedBy($ub = rand(500, 599));
+        $model->save();
+
+        // check no user set
+        $this->assertEquals($cb, $model->getCreatedBy());
+        $this->assertEquals($ub, $model->getUpdatedBy());
+
+        $insert = array_pop($db->inserts);
+        $this->assertEquals($cb, $insert[1]['created_by']);
+        $this->assertEquals($ub, $insert[1]['updated_by']);
+
+        // create a user
+        $user = new \Model_User();
+        $user->setId($uid = rand(10, 59));
+        \Mapper::setUser($user);
+
+        // update model
+        $model->setCreatedBy(rand(600, 699));
+        $model->setUpdatedBy(rand(700, 799));
+        $model->save();
+        $this->assertNotEquals($cb, $model->getCreatedBy());
+        $this->assertEquals($uid, $model->getUpdatedBy());
+
+        $update = array_pop($db->updates);
+        $this->assertEquals($uid, $update[1]['updated_by']);
+        $this->assertArrayNotHasKey('created_by', $update[1]);
+
+        // new model
+        $model = new \Model_ComplexModel();
+        $model->setCreatedBy($cb = rand(100, 499));
+        $model->setUpdatedBy($ub = rand(500, 599));
+        $model->save();
+
+        $this->assertEquals($uid, $model->getCreatedBy());
+        $this->assertEquals($uid, $model->getUpdatedBy());
+
+        $insert = array_pop($db->inserts);
+        $this->assertEquals($uid, $insert[1]['created_by']);
+        $this->assertEquals($uid, $insert[1]['updated_by']);
     }
 
     public function testJoinOnSave()

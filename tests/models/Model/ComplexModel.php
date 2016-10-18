@@ -13,7 +13,9 @@ class Model_ComplexModel extends Model
         'x1'            => null,
         'x2'            => null,
         'created_on'    => null,
+        'created_by'    => null,
         'updated_on'    => null,
+        'updated_by'    => null,
         'deleted_on'    => null
     );
 
