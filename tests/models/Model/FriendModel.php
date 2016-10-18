@@ -3,10 +3,14 @@
  * @author Felix A. Milovanov
  */
 
-class Model_SimpleModel extends Model
+class Model_FriendModel extends Model
 {
     const X1_DEFAULT    = '1';
     const X2_DEFAULT    = '1';
+
+    protected static $_friends = array(
+        'Test_Model'
+    );
 
     protected static $_defaults = array(
         'id'    => null,

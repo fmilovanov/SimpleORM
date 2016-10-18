@@ -5,6 +5,8 @@
 
 abstract class Model
 {
+    public static $__friends = array();
+    public static $__friends_depth = array();
     private $__is_search_pattern    = false;
 
     protected $_data                = array();
@@ -26,14 +28,66 @@ abstract class Model
 
     public function __construct($data = null)
     {
-        if (!isset(static::$__defaults))
+        if (!isset(static::$_defaults))
             throw new \Exception('No defaults defined');
 
-        $this->_data = static::$__defaults;
+        $this->_data = static::$_defaults;
 
         if (is_array($data))
         {
-            if (false)
+            $class = get_class($this);
+            if (!array_key_exists($class, self::$__friends))
+            {
+                self::$__friends[$class] = array('Mapper' => true, get_class($this->getMapper()) => true);
+                if (isset(static::$_friends))
+                {
+                    foreach (static::$_friends as $cname)
+                        self::$__friends[$class][$cname] = true;
+                }
+
+                self::$__friends_depth[$class] = count(class_parents($this)) + 3;
+            }
+
+            // check what options to use -- PHP versions are different
+            $version = explode('.', phpversion());
+            $version_major = $version[0] . '.' . $version[1];
+            if ($version_major < 5.4)
+            {
+                if (($version_major < 5.3) || ($version[2] < 6))
+                {
+                    $backtraces = debug_backtrace(false);
+                }
+                else
+                {
+                    $backtraces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+                }
+            }
+            else
+            {
+                $backtraces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::$__friends_depth[$class]);
+            }
+
+            $is_friend = false;
+            foreach ($backtraces as $backtrace)
+            {
+                // check if we're in constructor
+                if (($backtrace['function'] == '__construct') && ($backtrace['type'] == '->'))
+                    continue;
+
+                // check if we're in getModel
+                if (($backtrace['function'] == 'getModel') && ($backtrace['type'] == '->'))
+                    continue;
+
+                // check calling class
+                if (isset(self::$__friends[$class][$backtrace['class']]))
+                    $is_friend = true;
+
+                // we can exit -- no need to check deeper
+                break;
+            }
+
+
+            if ($is_friend)
             {
                 $this->_data = $data;
             }

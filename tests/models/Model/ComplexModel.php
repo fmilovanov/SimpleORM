@@ -7,7 +7,8 @@ class Model_ComplexModel extends Model
 {
     public $validated   = false;
 
-    protected static $__defaults = array(
+    protected static $_friends = array('Test_Model');
+    protected static $_defaults = array(
         'id'            => null,
         'x1'            => null,
         'x2'            => null,

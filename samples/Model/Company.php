@@ -5,7 +5,7 @@
 
 class Model_Company extends Model
 {
-    protected static $__defaults = array(
+    protected static $_defaults = array(
         'id'            => null,
         'name'          => null,
         'created_on'    => null,

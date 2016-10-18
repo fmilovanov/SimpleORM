@@ -5,7 +5,7 @@
 
 class Model_JoinModel extends Model
 {
-    protected static $__defaults = array(
+    protected static $_defaults = array(
         'id'        => null,
         'status_id' => null,
         'status'    => ''

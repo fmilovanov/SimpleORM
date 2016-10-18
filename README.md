@@ -1,6 +1,34 @@
 SimpleORM
 =========
 
+Friends
+-------
+By default, when we're creating a model from array, each property is set via an
+appropriate setter to ensure valid data. However, when loading mass amounts of
+objects from DB, it can become costly. Therefore, a mechanism of **friend 
+classes** has been introduced. If a **friend class** tries to create a model 
+from an array, all setters are bypassed, and object data is simple initialized
+from that array. 
+
+By default, abstract mapper and model's own mapper are **friends**, so when 
+you're loading data from DB via `find()` or `search()` functions, they bypass
+validation. If you want some other class to behave the same (for example, 
+another mapper returns a collection of your models), simply define `$_friends`
+variable in your model class:
+
+```php
+class Model_Mymodel extends Model
+{
+    protected static $_friends = array(
+        'Mapper_Othermodel'
+    );
+}
+```
+
+Please, do not abuse friends functionality, as it can compromise your data 
+quality. It's not recommended to define friends classes other that other 
+mappers that can return collection of your models. 
+
 Transactions
 ------------
 There are three method in mapper to support transactions: `beginTransaction()`, 
