@@ -70,7 +70,10 @@ class DbVirtual implements IDbAdapter
 
     public function delete($table, array $where, $allow_delete_all = false)
     {
-
+        foreach ($this->_simpleMatch($table, $where) as $id)
+        {
+            unset($this->tables[$table][$id]);
+        }
     }
 
     public function lastInsertId()

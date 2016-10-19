@@ -7,7 +7,7 @@ require_once(dirname(__DIR__) . '/SimpleORM/DbVirtual.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbSelect.php');
 require_once(dirname(__DIR__) . '/SimpleORM/DbException.php');
 
-class Test_DbSql extends Test_Abstract
+class Test_DbVirtual extends Test_Abstract
 {
     public function testLastInsertId()
     {
@@ -97,6 +97,81 @@ class Test_DbSql extends Test_Abstract
                 $tcontent[$id][$mkey2] = 0;
                 $db->update($table, array($mkey2 => 0), array($mkey => $mvalue, 'id' => $id));
                 $this->assertEquals($tcontent, $db->tables[$table]);
+            }
+        }
+    }
+
+    protected function generateData(array $keys, array $extra_data = array())
+    {
+        $data = array();
+        foreach ($keys as $key)
+            $data[$key] = $this->randValue ();
+
+        foreach ($extra_data as $key => $value)
+            $data[$key] = $value;
+
+        return $data;
+    }
+
+    public function testDelete()
+    {
+        $db = new \DbVirtual();
+        $tables = array();
+
+        for ($i = rand(5, 10); $i >= 0; $i--)
+        {
+            // generate table
+            $table = 'tbl' . rand($i * 100, $i * 100 + 99);
+            $tables[$table] = array();
+
+            // generate keys
+            $keys = array();
+            $mkey = 'k' . rand(100, 499);
+            $mkey2 = 'k' . rand(500, 999);
+            $mvalue = rand(1000, 4999);
+            for ($j = rand(2, 5); $j >= 0; $j--)
+                $keys[] = 'k' . rand($j * 10, $j * 10 + 9);
+
+            // insert N values
+            for ($j = rand(4, 15); $j >= 0; $j--)
+            {
+                // insert N records
+                $data = $this->generateData($keys, array($mkey => $mvalue, $mkey2 => $this->randValue()));
+                $db->insert($table, $data);
+                $id = $data['id'] = $db->lastInsertId();
+                $tables[$table][$id] = $data;
+                $this->assertEquals($db->tables, $tables);
+            }
+
+            // "fake" delete by ID
+            $db->delete($table, array('id' => $id + 1));
+            $this->assertEquals($db->tables, $tables);
+
+            // delete one record by ID
+            unset($tables[$table][$id]);
+            $db->delete($table, array('id' => $id));
+            $this->assertEquals($db->tables, $tables);
+
+            // delete record by id/key
+            $data = array_pop($tables[$table]);
+            $db->delete($table, array('id' => $data['id'], $mkey2 => $data[$mkey2]));
+            $this->assertEquals($db->tables, $tables);
+
+
+            // delete few records by key
+            $tables[$table] = array();
+            $db->delete($table, array($mkey => $mvalue));
+            $this->assertEquals($db->tables, $tables);
+
+            // insert a few records
+            for ($j = rand(3, 8); $j >= 0; $j--)
+            {
+                // insert N records
+                $data = $this->generateData($keys, array($mkey => $mvalue));
+                $db->insert($table, $data);
+                $id = $data['id'] = $db->lastInsertId();
+                $tables[$table][$id] = $data;
+                $this->assertEquals($db->tables, $tables);
             }
         }
     }
