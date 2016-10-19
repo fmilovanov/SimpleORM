@@ -45,60 +45,13 @@ class Test_DbVirtual extends Test_Abstract
         }
     }
 
-    public function testUpdate()
+    protected function generateKeys($num_keys, $prefix = 'k')
     {
-        $db = new \DbVirtual();
+        $keys = array();
+        for ($i = 0; $i <= $num_keys; $i++)
+            $keys[] = $prefix . rand($i * 10, $i * 10 + 9);
 
-        for ($i = 0; $i < 10; $i++)
-        {
-            // generate table
-            $table = 'tbl' . rand($i * 100, $i * 100 + 99);
-
-            // generate keys
-            $keys = array();
-            $mkey = 'k' . rand(100, 499);
-            $mkey2 = 'k' . rand(500, 999);
-            $mvalue = rand(1000, 9999);
-            for ($j = rand(2, 5); $j >= 0; $j--)
-                $keys[] = 'k' . rand($j * 10, $j * 10 + 9);
-
-            $tcontent = array();
-            for ($j = 0; $j < 10; $j++)
-            {
-                $data = array($mkey => $mvalue, $mkey2 => $this->randValue());
-                foreach ($keys as $key)
-                    $data[$key] = $this->randValue();
-
-                // insert and check
-                $db->insert($table, $data);
-                $id = $data['id'] = $db->lastInsertId();
-                $tcontent[$id] = $data;
-                $this->assertEquals($tcontent, $db->tables[$table]);
-
-                // update single record by ID
-                foreach ($keys as $key)
-                    $data[$key] = $this->randValue();
-                $tcontent[$id] = $data;
-                $db->update($table, $data, array('id' => $id));
-                $this->assertEquals($tcontent, $db->tables[$table]);
-
-                // update all records by mkey
-                $mvalue2 = $this->randValue();
-                foreach ($tcontent as $id2 => $data)
-                    $tcontent[$id2][$mkey2] = $mvalue2;
-                $db->update($table, array($mkey2 => $mvalue2), array($mkey => $mvalue));
-                $this->assertEquals($tcontent, $db->tables[$table]);
-
-                // empty update by non-matching keys
-                $db->update($table, array($mkey2 => 0), array($mkey => $mvalue . '.bad', 'id' => $id));
-                $this->assertEquals($tcontent, $db->tables[$table]);
-
-                // single update by two keys
-                $tcontent[$id][$mkey2] = 0;
-                $db->update($table, array($mkey2 => 0), array($mkey => $mvalue, 'id' => $id));
-                $this->assertEquals($tcontent, $db->tables[$table]);
-            }
-        }
+        return $keys;
     }
 
     protected function generateData(array $keys, array $extra_data = array())
@@ -113,6 +66,61 @@ class Test_DbVirtual extends Test_Abstract
         return $data;
     }
 
+
+
+    public function testUpdate()
+    {
+        $db = new \DbVirtual();
+        $tables = array();
+
+        for ($i = 0; $i < 10; $i++)
+        {
+            // generate table
+            $table = 'tbl' . rand($i * 100, $i * 100 + 99);
+            $tables[$table] = array();
+
+            // generate keys
+            $keys = $this->generateKeys(rand(4, 9));
+            $mkey = 'k' . rand(100, 499);
+            $mkey2 = 'k' . rand(500, 999);
+            $mvalue = rand(1000, 9999);
+
+            for ($j = 0; $j < 10; $j++)
+            {
+                $data = $this->generateData($keys, array($mkey => $mvalue, $mkey2 => $this->randValue()));
+
+                // insert and check
+                $db->insert($table, $data);
+                $id = $data['id'] = $db->lastInsertId();
+                $tables[$table][$id] = $data;
+                $this->assertEquals($tables, $db->tables);
+
+                // update single record by ID
+                foreach ($keys as $key)
+                    $data[$key] = $this->randValue();
+                $tables[$table][$id] = $data;
+                $db->update($table, $data, array('id' => $id));
+                $this->assertEquals($tables, $db->tables);
+
+                // update all records by mkey
+                $mvalue2 = $this->randValue();
+                foreach ($tables[$table] as $id2 => $data)
+                    $tables[$table][$id2][$mkey2] = $mvalue2;
+                $db->update($table, array($mkey2 => $mvalue2), array($mkey => $mvalue));
+                $this->assertEquals($tables, $db->tables);
+
+                // empty update by non-matching keys
+                $db->update($table, array($mkey2 => 0), array($mkey => $mvalue . '.bad', 'id' => $id));
+                $this->assertEquals($tables, $db->tables);
+
+                // single update by two keys
+                $tables[$table][$id][$mkey2] = 0;
+                $db->update($table, array($mkey2 => 0), array($mkey => $mvalue, 'id' => $id));
+                $this->assertEquals($tables, $db->tables);
+            }
+        }
+    }
+
     public function testDelete()
     {
         $db = new \DbVirtual();
@@ -125,12 +133,10 @@ class Test_DbVirtual extends Test_Abstract
             $tables[$table] = array();
 
             // generate keys
-            $keys = array();
+            $keys = $this->generateKeys(rand(3, 7));
             $mkey = 'k' . rand(100, 499);
             $mkey2 = 'k' . rand(500, 999);
             $mvalue = rand(1000, 4999);
-            for ($j = rand(2, 5); $j >= 0; $j--)
-                $keys[] = 'k' . rand($j * 10, $j * 10 + 9);
 
             // insert N values
             for ($j = rand(4, 15); $j >= 0; $j--)
