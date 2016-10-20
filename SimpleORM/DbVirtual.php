@@ -103,6 +103,7 @@ class DbVirtual implements IDbAdapter
             throw new \Exception(self::ERROR_NO_TRANSACTION);
 
         $this->tables = $this->tables_transaction;
+        $this->tables_transaction = null;
     }
 
     public function query(\DbSelect $select)

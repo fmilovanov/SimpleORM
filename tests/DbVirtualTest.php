@@ -181,4 +181,76 @@ class Test_DbVirtual extends Test_Abstract
             }
         }
     }
+
+
+
+    public function testTransactions()
+    {
+        $db = new \DbVirtual();
+        $this->assertEquals(array(), $db->tables);
+
+        $db->beginTransaction();
+        for ($i = 0; $i < 10; $i++)
+        {
+            $table = 'tbl' . rand($i * 100, $i * 100 + 99);
+            for ($j = 0; $j < 10; $j++)
+            {
+                $keys = $this->generateKeys(rand(3, 8));
+                $db->insert($table, $this->generateData($keys));
+            }
+        }
+        $this->assertNotEquals(array(), $db->tables);
+
+        // rollback and check
+        $db->rollBack();
+        $this->assertEquals(array(), $db->tables);
+
+        // another transaction
+        $db->beginTransaction();
+        for ($i = 0; $i < 10; $i++)
+        {
+            $table = 'tbl' . rand($i * 100, $i * 100 + 99);
+            for ($j = 0; $j < 10; $j++)
+            {
+                $keys = $this->generateKeys(rand(3, 8));
+                $db->insert($table, $this->generateData($keys));
+            }
+        }
+        $db->commit();
+        $this->assertNotEquals(array(), $db->tables);
+
+        // try another commit -- not in transaction
+        try
+        {
+            $db->commit();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbVirtual::ERROR_NO_TRANSACTION, $e->getMessage());
+        }
+
+        // try rollback
+        try
+        {
+            $db->rollBack();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbVirtual::ERROR_NO_TRANSACTION, $e->getMessage());
+        }
+
+        // try to start two transactions in a row
+        $db->beginTransaction();
+        try
+        {
+            $db->beginTransaction();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(\DbVirtual::ERROR_TRANSACTION, $e->getMessage());
+        }
+    }
 }
