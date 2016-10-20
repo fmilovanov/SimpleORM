@@ -253,4 +253,125 @@ class Test_DbVirtual extends Test_Abstract
             $this->assertEquals(\DbVirtual::ERROR_TRANSACTION, $e->getMessage());
         }
     }
+
+    public function testQuerySimpleWhere()
+    {
+        $db = new \DbVirtual();
+
+        // create table
+        $table = 'tbl' . rand(100, 199);
+        $key = 'k' . rand(200, 299);
+        $keys = $this->generateKeys(rand(4, 8));
+
+        // insert a record
+        $db->insert($table, $data1 = $this->generateData($keys, array($key => rand(100, 299))));
+        $data1['id'] = $db->lastInsertId();
+        $db->insert($table, $data2 = $this->generateData($keys, array($key => rand(300, 499))));
+        $data2['id'] = $db->lastInsertId();
+        $db->insert($table, $data3 = $this->generateData($keys, array($key => rand(500, 699))));
+        $data3['id'] = $db->lastInsertId();
+
+        // try empty select
+        $select = new \DbSelect($table);
+        $this->assertEquals(array($data1, $data2, $data3), $db->query($select));
+
+        // select by ID
+        $select->where('id', $data1['id']);
+        $this->assertEquals(array($data1), $db->query($select));
+
+        // select by other ID
+        $select->where('id', $data1['id'] + 1);
+        $this->assertEquals(array(), $db->query($select));
+
+        // OR same ID
+        $select->whereOr('id', $data1['id']);
+        $this->assertEquals(array($data1), $db->query($select));
+
+        // NE
+        $select = new \DbSelect($table);
+        $select->where('id', \DbSelect::ne($data1['id']));
+        $this->assertEquals(array($data2, $data3), $db->query($select));
+
+        // add OR
+        $select->whereOr('id', \DbSelect::eq($data1['id']));
+        $this->assertEquals(array($data1, $data2, $data3), $db->query($select));
+
+        // LT
+        $select->where('id', \DbSelect::lt($data3['id']));
+        $this->assertEquals(array($data1, $data2), $db->query($select));
+
+        // LTE
+        $select->whereOr('id', \DbSelect::lte($data3['id']));
+        $this->assertEquals(array($data1, $data2, $data3), $db->query($select));
+
+        // GT
+        $select->where('id', \DbSelect::gt($data1['id']));
+        $this->assertEquals(array($data2, $data3), $db->query($select));
+
+        // GTE
+        $select->whereOr('id', \DbSelect::gte($data1['id']));
+        $this->assertEquals(array($data1, $data2, $data3), $db->query($select));
+
+        // IN
+        $select->where('id', \DbSelect::in($data1['id'], $data3['id']));
+        $this->assertEquals(array($data1, $data3), $db->query($select));
+
+        // NOT IN
+        $select = new \DbSelect($table);
+        $select->where('id', \DbSelect::not_in($data1['id'], $data3['id']));
+        $this->assertEquals(array($data2), $db->query($select));
+
+        // BETWEEN
+        $select->whereOr('id', \DbSelect::between($data1['id'], $data2['id']));
+        $this->assertEquals(array($data1, $data2), $db->query($select));
+
+        // two key search
+        $select = new \DbSelect($table);
+        $select->where('id', \DbSelect::gt($data1['id']))
+               ->where($key, \DbSelect::lt($data3[$key]));
+        $this->assertEquals(array($data2), $db->query($select));
+    }
+
+    public function testQueryWhereNULL()
+    {
+        $db = new \DbVirtual();
+
+        // create table
+        $table = 'tbl' . rand(100, 199);
+        $key = 'k' . rand(200, 299);
+        $keys = $this->generateKeys(rand(4, 8));
+
+        // insert data
+        $db->insert($table, $data1 = $this->generateData($keys, array($key => rand(100, 299))));
+        $data1['id'] = $db->lastInsertId();
+        $db->insert($table, $data2 = $this->generateData($keys, array($key => rand(300, 499))));
+        $data2['id'] = $db->lastInsertId();
+        $db->insert($table, $data3 = $this->generateData($keys, array($key => NULL)));
+        $data3['id'] = $db->lastInsertId();
+
+        // regular
+        $select = new \DbSelect($table);
+        $select->where($key, $data1[$key]);
+        $this->assertEquals(array($data1), $db->query($select));
+
+        // OR IS NULL
+        $select->whereOr($key, \DbSelect::is_null());
+        $this->assertEquals(array($data1, $data3), $db->query($select));
+
+        // NULL or value
+        $select = new \DbSelect($table);
+        $select->where($key, \DbSelect::in($data1[$key], null));
+        $this->assertEquals(array($data1, $data3), $db->query($select));
+
+        // IS NOT NULL
+        $select = new \DbSelect($table);
+        $select->where($key, \DbSelect::not_null());
+        $this->assertEquals(array($data1, $data2), $db->query($select));
+
+        // NOT NULL or value
+        $select = new \DbSelect($table);
+        $select->where($key, \DbSelect::not_in($data2[$key], null));
+        $this->assertEquals(array($data1), $db->query($select));
+    }
+
 }

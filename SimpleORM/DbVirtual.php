@@ -106,9 +106,83 @@ class DbVirtual implements IDbAdapter
         $this->tables_transaction = null;
     }
 
+    private function _match(\DbWhereCond $cond, $value)
+    {
+        switch ($cond->operator)
+        {
+            case \DbSelect::OPERATOR_EQ:
+                return $cond->val1 === $value;
+
+            case \DbSelect::OPERATOR_NE:
+                return $cond->val1 !== $value;
+
+            case \DbSelect::OPERATOR_LT:
+                return $cond->val1 > $value;
+
+            case \DbSelect::OPERATOR_LTE:
+                return $cond->val1 >= $value;
+
+            case \DbSelect::OPERATOR_GT:
+                return $cond->val1 < $value;
+
+            case \DbSelect::OPERATOR_GTE:
+                return $cond->val1 <= $value;
+
+            case \DbSelect::OPERATOR_IN:
+                if (empty($cond->val1))
+                    return is_null($value);
+                if (in_array($value, $cond->val1, true))
+                    return true;
+
+                return false;
+
+            case \DbSelect::OPERATOR_NOT_IN:
+                if (empty($cond->val1))
+                    return !is_null($value);
+                if (!in_array($value, $cond->val1, true))
+                    return true;
+
+                return false;
+
+            case \DbSelect::OPERATOR_BETWEEN:
+                return ($value >= $cond->val1) && ($value <= $cond->val2);
+
+
+            default:
+                throw new \Exception($cond->key . ': unknown operator');
+        }
+    }
+
     public function query(\DbSelect $select)
     {
+        $table = $select->getTable();
 
+        if (!isset($this->tables[$table]))
+            throw new \Exception(self::ERROR_NO_TABLE);
+
+        $result = array();
+        foreach ($this->tables[$table] as $id => $data)
+        {
+            foreach ($select->getWhere() as $conditions)
+            {
+                $matches = false;
+                foreach ($conditions as $cond)
+                {
+                    if (!array_key_exists($cond->key, $data))
+                        throw new \Exception(self::ERROR_NO_KEY);
+
+                    if ($this->_match($cond, $data[$cond->key]))
+                        $matches = true;
+                }
+
+                if (!$matches)
+                    continue 2;
+            }
+
+            $result[] = $data;
+        }
+
+        return $result;
     }
 
 }

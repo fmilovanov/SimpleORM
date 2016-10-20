@@ -229,11 +229,24 @@ class DbSelect
         return $cond;
     }
 
+    /**
+     * @param string $key
+     * @param type $value
+     * @return \DbSelect
+     * @throws \Exception
+     */
     public function where($key, $value)
     {
         $this->_where[] = array($this->_where($key, $value));
+        return $this;
     }
 
+    /**
+     * @param string $key
+     * @param type $value
+     * @return \DbSelect
+     * @throws \Exception
+     */
     public function whereOr($key, $value)
     {
         $index = count($this->_where) - 1;
@@ -241,6 +254,7 @@ class DbSelect
             throw new \Exception(self::ERROR_WHERE_OR);
 
         $this->_where[$index][] = $this->_where($key, $value);
+        return $this;
     }
 
     public function getWhere()
