@@ -297,8 +297,6 @@ class Test_DbSql extends Test_Abstract
         $adapter->query($select);
         $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
         $this->assertQuery("SELECT " . implode(', ', $fields) . " FROM `$tbl` t", $stmt->sql);
-
-
     }
 
     public function testQueryEq()

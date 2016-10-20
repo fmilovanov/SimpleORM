@@ -6,10 +6,16 @@ require_once(__DIR__ . '/Abstract.php');
 require_once(__DIR__ . '/models/Model/SimpleModel.php');
 require_once(__DIR__ . '/models/Model/ComplexModel.php');
 require_once(__DIR__ . '/models/Model/JoinModel.php');
+require_once(__DIR__ . '/models/Model/OnlyUpdate.php');
+require_once(__DIR__ . '/models/Model/OnlyInsert.php');
+require_once(__DIR__ . '/models/Model/NoSave.php');
 require_once(__DIR__ . '/models/Model/User.php');
 require_once(__DIR__ . '/models/Mapper/SimpleModel.php');
 require_once(__DIR__ . '/models/Mapper/ComplexModel.php');
 require_once(__DIR__ . '/models/Mapper/JoinModel.php');
+require_once(__DIR__ . '/models/Mapper/OnlyUpdate.php');
+require_once(__DIR__ . '/models/Mapper/OnlyInsert.php');
+require_once(__DIR__ . '/models/Mapper/NoSave.php');
 
 class TestAdapter implements IDbAdapter
 {
@@ -402,4 +408,92 @@ class Test_Mapper extends Test_Abstract
         $this->assertEquals(1, $db->commits);
         $this->assertEquals(0, $db->rollbacks);
     }
+
+    public function testUpdateOnlyModel()
+    {
+        $db = new TestAdapter($pdo);
+        Mapper::setDefaultDbAdapter($db);
+
+        // try to insert a new item
+        $model = new \Model_OnlyUpdate();
+        try
+        {
+            $model->save();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(Mapper::ERROR_NO_INSERT, $e->getMessage());
+        }
+
+        // fake an object
+        $db->data = array(array('id' => $id = rand(10, 99), 'updated_on' => $this->randValue(),
+                                'updated_by' => rand(10, 99)));
+        $mapper = \Mapper_OnlyUpdate::getInstance();
+        $this->assertNotNull($model = $mapper->find($id));
+
+        // try to update it
+        $model->save();
+        $this->assertLessThan(2, time() - strtotime($model->getUpdatedOn()));
+    }
+
+    public function testInsertOnlyModel()
+    {
+        $db = new TestAdapter($pdo);
+        Mapper::setDefaultDbAdapter($db);
+
+        // try to insert a new item
+        $model = new \Model_OnlyInsert();
+        $model->save();
+        $this->assertNotNull($model->getId());
+        $this->assertNotNull($model->getUpdatedOn());
+        return;
+
+        // try to update
+        try
+        {
+            $model->save();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(Mapper::ERROR_NO_UPDATE, $e->getMessage());
+        }
+    }
+
+    public function testNoSaveModel()
+    {
+        $db = new TestAdapter($pdo);
+        Mapper::setDefaultDbAdapter($db);
+
+        // try to insert a new item
+        $model = new \Model_NoSave();
+        try
+        {
+            $model->save();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(Mapper::ERROR_NO_INSERT, $e->getMessage());
+        }
+
+        // fake an object
+        $db->data = array(array('id' => $id = rand(10, 99), 'updated_on' => $this->randValue(),
+                                'updated_by' => rand(10, 99)));
+        $mapper = \Mapper_NoSave::getInstance();
+        $this->assertNotNull($model = $mapper->find($id));
+
+        // try to update
+        try
+        {
+            $model->save();
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(Mapper::ERROR_NO_UPDATE, $e->getMessage());
+        }
+    }
+
 }

@@ -10,11 +10,21 @@ abstract class Mapper
     const ERROR_JOIN            = 'Incorrect join - cannot load object back';
     const ERROR_JOIN_COLUMN     = 'Join column setter not found';
 
+    const ERROR_NO_INSERT       = 'This object can not be inserted';
+    const ERROR_NO_UPDATE       = 'This object can not be updated';
+
+    const SAVE_INSERT           = 1;
+    const SAVE_UPDATE           = 2;
+
+    private $__dbAdapter;
     private $__cache = array();
+
     private static $__user;
-    private static $__dbAdapter;
+    private static $__defaultDbAdapter;
     private static $__transaction_id;
-    protected static $__instances = array();
+    private static $__instances = array();
+
+    protected $_save_allowed    = self::SAVE_INSERT | self::SAVE_UPDATE;
 
     private function __construct() { }
 
@@ -28,27 +38,35 @@ abstract class Mapper
         $cname = get_called_class();
         if (!isset(self::$__instances[$cname]))
         {
-            static::$__instances[$cname] = new $cname();
+            self::$__instances[$cname] = new $cname();
         }
 
-        return static::$__instances[$cname];
+        return self::$__instances[$cname];
     }
 
     public static function setDefaultDbAdapter(IDbAdapter $adapter)
     {
-        self::$__dbAdapter = $adapter;
+        self::$__defaultDbAdapter = $adapter;
+    }
+
+    public function setDbAdapter(IDbAdapter $adapter)
+    {
+        $this->__dbAdapter = $adapter;
     }
 
     /**
      * @return IDbAdapter
      * @throws Exception
      */
-    public static function getDbAdapter()
+    protected function getDbAdapter()
     {
-        if (self::$__dbAdapter === null)
-            throw new Exception('No DB adapter defined');
+        if (!is_null($this->__dbAdapter))
+            return $this->__dbAdapter;
 
-        return self::$__dbAdapter;
+        if (!is_null(self::$__defaultDbAdapter))
+            return self::$__defaultDbAdapter;
+
+        throw new \Exception('No DB adapter set');
     }
 
     /**
@@ -142,12 +160,18 @@ abstract class Mapper
 
         if ($model->getId())
         {
-            self::getDbAdapter()->update($this->getTableName(), $data, array('id' => $model->getId()));
+            if (!($this->_save_allowed & self::SAVE_UPDATE))
+                throw new \Exception(self::ERROR_NO_UPDATE);
+
+            $this->getDbAdapter()->update($this->getTableName(), $data, array('id' => $model->getId()));
         }
         else
         {
-            self::getDbAdapter()->insert($this->getTableName(), $data);
-            $model->setId(self::getDbAdapter()->lastInsertId());
+            if (!($this->_save_allowed & self::SAVE_INSERT))
+                throw new \Exception(self::ERROR_NO_INSERT);
+
+            $this->getDbAdapter()->insert($this->getTableName(), $data);
+            $model->setId($this->getDbAdapter()->lastInsertId());
             if ($created_on)
                 $model->setCreatedOn($data['created_on']);
             if ($created_by)
@@ -226,7 +250,7 @@ abstract class Mapper
     {
         $model = $this->getModel(false);
 
-        return $model->search($order);
+        return $model->search($sort);
     }
 
     public function delete(\Model $model, $hard = false)

@@ -5,8 +5,8 @@
 
 abstract class Model
 {
-    public static $__friends = array();
-    public static $__friends_depth = array();
+    private static $__friends       = array();
+    private static $__friends_depth = array();
     private $__is_search_pattern    = false;
 
     protected $_data                = array();
@@ -48,27 +48,8 @@ abstract class Model
                 self::$__friends_depth[$class] = count(class_parents($this)) + 3;
             }
 
-            // check what options to use -- PHP versions are different
-            $version = explode('.', phpversion());
-            $version_major = $version[0] . '.' . $version[1];
-            if ($version_major < 5.4)
-            {
-                if (($version_major < 5.3) || ($version[2] < 6))
-                {
-                    $backtraces = debug_backtrace(false);
-                }
-                else
-                {
-                    $backtraces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-                }
-            }
-            else
-            {
-                $backtraces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::$__friends_depth[$class]);
-            }
-
             $is_friend = false;
-            foreach ($backtraces as $backtrace)
+            foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::$__friends_depth[$class]) as $backtrace)
             {
                 // check if we're in constructor
                 if (($backtrace['function'] == '__construct') && ($backtrace['type'] == '->'))
