@@ -241,6 +241,12 @@ class DbVirtual implements IDbAdapter
             usort($result, array($this, '_compare'));
         }
 
+        if ($select->getSearchLimit())
+        {
+            list($limit, $offset) = $select->getSearchLimit();
+            $result = $offset ? array_slice($result, $offset, $limit) : array_slice($result, 0, $limit);
+        }
+
 
         return $result;
     }

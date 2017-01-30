@@ -416,7 +416,7 @@ class Test_DbVirtual extends Test_Abstract
 
         // generate data
         $expected = [];
-        for ($i = rand(2, 3); $i > 0; $i--)
+        for ($i = rand(5, 8); $i > 0; $i--)
         {
             $data = $this->generateData($keys);
             $data[$keys[0]] = $i;
@@ -454,8 +454,42 @@ class Test_DbVirtual extends Test_Abstract
         // k2 ASC, k0 DESC
         $select->setOrder($keys[2] . ', ' . $keys[0] . ' DESC');
         $this->assertEquals(array_values($expected), $db->query($select));
+    }
 
-        
+    public function testLimit()
+    {
+        $db = new \DbVirtual();
+
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $keys = $this->generateKeys(rand(5, 8));
+
+        $expected = [];
+        for ($i = rand(5, 8); $i > 0; $i--)
+        {
+            $data = $this->generateData($keys);
+            $data[$keys[0]] = 20 - $i;
+            $db->insert($table, $data);
+            $data['id'] = $db->lastInsertId();
+            $expected[$i] = $data;
+        }
+
+        // no order test
+        $select = new \DbSelect($table);
+        $select->setSearchLimit(2);
+        $this->assertEquals(array_slice(array_values($expected), 0, 2), $db->query($select));
+
+        $select->setSearchLimit(3, 2);
+        $this->assertEquals(array_slice(array_values($expected), 2, 3), $db->query($select));
+
+        // add ASC order clause
+        $select->setOrder($keys[0]);
+        $this->assertEquals(array_slice(array_values($expected), 2, 3), $db->query($select));
+
+        // add DESC order
+        ksort($expected);
+        $select->setOrder($keys[0] . ' DESC');
+        $this->assertEquals(array_slice(array_values($expected), 2, 3), $db->query($select));
     }
 
 
