@@ -5,6 +5,14 @@
 
 class DbVirtual implements IDbAdapter
 {
+    const TYPE_INT      = 'int';
+    const TYPE_CHAR     = 'char';
+    const TYPE_ENUM     = 'enum';
+    const TYPE_DATE     = 'date';
+    const TYPE_FLOAT    = 'float';
+    const TYPE_DATETIME = 'datetime';
+    const TYPE_SET      = 'set';
+
     const ERROR_NO_TABLE        = 'no table found';
     const ERROR_NO_KEY          = 'no key found';
     const ERROR_TRANSACTION     = 'already in transaction';
@@ -15,6 +23,7 @@ class DbVirtual implements IDbAdapter
 
     public $last_id;
     public $tables = array();
+    private $_table_def = [];
     public $tables_transaction;
 
     public function __construct(PDO $pdo = null)
@@ -323,4 +332,100 @@ class DbVirtual implements IDbAdapter
         return $result;
     }
 
+    private function _initMysql($name)
+    {
+        $stmt = $this->_pdo->prepare("SHOW CREATE TABLE `$name`");
+        $stmt->execute();
+
+        $data = explode("\n", array_pop(array_pop($stmt->fetchAll(\PDO::FETCH_ASSOC))));
+        if (!preg_match('/^CREATE TABLE /', array_shift($data)))
+            throw new Exception('Bad create table');
+
+        $this->_table_def[$name] = [];
+        foreach ($data as $string)
+        {
+            // column definition
+            if (preg_match('/^\s+`([^`]+)`\s+([^ ]+)\s+(.*)$/', $string, $m))
+            {
+                $column = new stdClass();
+                $column->primary = false;
+                $column->null = !preg_match('/NOT NULL/', $m[3]);
+                if (preg_match("/DEFAULT '(.*)'/", $m[3], $n))
+                    $column->default = str_replace("''", "'", $n[1]);
+
+
+                if (preg_match('/^(|small|medium|big)int[(](\d+)[)]/', $m[2], $n))
+                {
+                    $column->type = self::TYPE_INT;
+                    $column->len = $n[2];
+                }
+                elseif (preg_match('/^(|var)char[(](\d+)[)]/', $m[2], $n))
+                {
+                    $column->type = self::TYPE_CHAR;
+                    $column->len = $n[2];
+                }
+                elseif (preg_match('/(text|blob)/', $m[2], $n))
+                {
+                    $column->type = self::TYPE_CHAR;
+                    $column->len = 65536;
+                }
+                elseif (preg_match('/(decimal|float)/', $m[2]))
+                {
+                    $column->type = self::TYPE_FLOAT;
+                }
+                elseif (preg_match('/^(datetime|timestamp)/', $m[2]))
+                {
+                    $column->type = self::TYPE_DATETIME;
+                }
+                elseif (preg_match('/^date/', $m[2]))
+                {
+                    $column->type = self::TYPE_DATE;
+                }
+                elseif (preg_match('/^enum[(](.*)[)]/', $m[2], $n))
+                {
+                    $column->type = self::TYPE_ENUM;
+                    $column->values = explode(',', $n[1]);
+                    foreach ($column->values as $id => $val)
+                        $column->values[$id] = preg_replace('/\'$/', '', preg_replace ('/^\'/', '', $val));
+                }
+                else throw new \Exception('`' . $m[1] . '`: unsuppoted field type');
+
+
+
+                    $this->_table_def[$name][$m[1]] = $column;
+                //print_r($m);
+            }
+
+
+
+        }
+
+
+
+        print_r($this->_table_def);
+        
+    }
+
+    public function createTable($name)
+    {
+        if (isset($this->tables[$name]))
+            return;
+
+        $this->tables[$name] = [];
+        if (!$this->_pdo)
+            return;
+
+        switch ($this->_pdo->getAttribute(\PDO::ATTR_DRIVER_NAME))
+        {
+            case 'mysql':
+                $this->_initMysql($name);
+                break;
+
+            default:
+                $x = 1;
+        }
+
+        
+
+    }
 }
