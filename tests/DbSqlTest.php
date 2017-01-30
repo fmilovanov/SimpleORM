@@ -845,7 +845,7 @@ class Test_DbSql extends Test_Abstract
         $select->setOrder($order = 'o' . rand(100, 999));
         $adapter->query($select);
         $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
-        $this->assertQuery("SELECT t.* FROM `$tbl` t ORDER BY `$order`", $stmt->sql);
+        $this->assertQuery("SELECT t.* FROM `$tbl` t ORDER BY `$order` ASC", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
 
@@ -878,7 +878,7 @@ class Test_DbSql extends Test_Abstract
         $select->setOrder("$order, `$order2` DESC");
         $adapter->query($select);
         $this->assertInstanceOf('TestSTMT', $stmt = array_pop($pdo->statements));
-        $this->assertQuery("SELECT t.* FROM `$tbl` t ORDER BY `$order`, `$order2` DESC", $stmt->sql);
+        $this->assertQuery("SELECT t.* FROM `$tbl` t ORDER BY `$order` ASC, `$order2` DESC", $stmt->sql);
         $this->assertEquals(array(), $stmt->params);
         $this->assertEquals(PDO::FETCH_ASSOC, $stmt->fetch_all);
     }

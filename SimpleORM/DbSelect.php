@@ -274,10 +274,10 @@ class DbSelect
                     !preg_match('/^`([a-z_][a-z0-9_]+)`( +(asc|desc))?$/i', $val, $m))
                     throw new \Exception(self::ERROR_ORDER);
 
-                $order[] = '`' . $m[1] . '`' . (isset($m[3]) ? (' ' . $m[3]) : '');
+                $order[$m[1]] = strtoupper(isset($m[3]) ? $m[3] : 'asc');
             }
 
-            $val = implode(', ', $order);
+            $val = $order;
         }
         elseif (!is_null($val))
         {

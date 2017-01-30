@@ -330,7 +330,7 @@ class Test_Mapper extends Test_Abstract
         $this->assertTrue(($select = array_pop($db->selects)) instanceof \DbSelect);
         $this->assertEquals($model->getMapper()->getTableName(), $select->getTable());
         $this->assertEquals(array(array($cond1), array($cond2)), $select->getWhere());
-        $this->assertEquals("`$order`", $select->getOrder());
+        $this->assertEquals([$order => 'ASC'], $select->getOrder());
     }
 
     public function testCache()

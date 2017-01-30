@@ -332,8 +332,14 @@ class DbSql implements IDbAdapter
         if ($where = $this->_whereClause($select->getWhere(), $params, $pcount, 't'))
             $SQLStr .= "\n WHERE $where";
 
-        if ($order = $select->getOrder())
-            $SQLStr .= "\n ORDER BY $order";
+        if ($select->getOrder())
+        {
+            $order = [];
+            foreach ($select->getOrder() as $field => $direction)
+                $order[] = "`$field` $direction";
+
+            $SQLStr .= "\n ORDER BY " . implode(', ', $order);
+        }
 
         if (is_array($limit = $select->getSearchLimit()))
             $SQLStr .= "\n LIMIT " . ($limit[1] ? ($limit[1] . ', ' . $limit[0]) : $limit[0]);

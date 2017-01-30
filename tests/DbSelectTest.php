@@ -274,23 +274,23 @@ class Test_DbSelect extends Test_Abstract
         $select = new \DbSelect($table = 'tbl' . rand(100, 999));
 
         $select->setOrder($order = 'o' . rand(100, 999));
-        $this->assertEquals("`$order`", $select->getOrder());
+        $this->assertEquals([$order => 'ASC'], $select->getOrder());
 
         $select->setOrder("`$order`");
-        $this->assertEquals("`$order`", $select->getOrder());
+        $this->assertEquals([$order => 'ASC'], $select->getOrder());
 
         $select->setOrder("`$order` ASC");
-        $this->assertEquals("`$order` ASC", $select->getOrder());
+        $this->assertEquals([$order => 'ASC'], $select->getOrder());
 
         $select->setOrder("`$order` DESC");
-        $this->assertEquals("`$order` DESC", $select->getOrder());
+        $this->assertEquals([$order => 'DESC'], $select->getOrder());
 
         $order2 = 'x' . rand(1000, 9999);
         $select->setOrder("`$order` DESC, $order2");
-        $this->assertEquals("`$order` DESC, `$order2`", $select->getOrder());
+        $this->assertEquals([$order => 'DESC', $order2 => 'ASC'], $select->getOrder());
 
         $select->setOrder("`$order`, `$order2` ASC");
-        $this->assertEquals("`$order`, `$order2` ASC", $select->getOrder());
+        $this->assertEquals([$order => 'ASC', $order2 => 'ASC'], $select->getOrder());
     }
 
     public function testJoin()
