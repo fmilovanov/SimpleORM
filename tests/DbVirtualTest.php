@@ -534,4 +534,110 @@ class Test_DbVirtual extends Test_Abstract
         $this->assertEquals($expected, $db->query($select));
     }
 
+    public function testTwoTableJoin()
+    {
+        $db = new \DbVirtual();
+
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $keys = ['k0', 'k1', 'k2'];
+        $db->insert($table, $data1 = $this->generateData($keys));
+        $id = $db->lastInsertId();
+        $db->insert($table, $data2 = $this->generateData($keys));
+
+        $jtable1 = 'tbl' . rand(200, 299);
+        $jkeys1 = ['j0', 'j1'];
+        $db->insert($jtable1, $jdata11 = $this->generateData($jkeys1, ['j0' => $data1['k0']]));
+        $db->insert($jtable1, $jdata12 = $this->generateData($jkeys1));
+
+        $jtable2 = 'tbl' . rand(300, 399);
+        $jkeys2 = ['l0', 'l1'];
+        $db->insert($jtable2, $jdata21 = $this->generateData($jkeys2, ['l0' => $data1['k0']]));
+        $db->insert($jtable2, $jdata22 = $this->generateData($jkeys2));
+
+        $select = new \DbSelect($table);
+        $select->join($jtable1, ['j0' => [$table, 'k0']], ['j1' => 'jjj']);
+        $select->join($jtable2, ['l0' => [$table, 'k0']], ['l1' => 'lll']);
+
+        $expected = array_merge($data1, ['id' => $id, 'jjj' => $jdata11['j1'], 'lll' => $jdata21['l1']]);
+        $this->assertEquals([$expected], $db->query($select));
+    }
+
+    public function testSameTableJoin()
+    {
+        $db = new \DbVirtual();
+
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $keys = ['k0', 'k1', 'k2'];
+        $db->insert($table, $data1 = $this->generateData($keys));
+        $id = $db->lastInsertId();
+        $db->insert($table, $data2 = $this->generateData($keys));
+
+        $jtable = 'tbl' . rand(200, 299);
+        $jkeys = ['j0', 'j1'];
+        $db->insert($jtable, $jdata11 = $this->generateData($jkeys, ['j0' => $data1['k0']]));
+        $db->insert($jtable, $jdata12 = $this->generateData($jkeys));
+        $db->insert($jtable, $jdata21 = $this->generateData($jkeys, ['j1' => $data1['k1']]));
+        $db->insert($jtable, $jdata22 = $this->generateData($jkeys));
+
+        $select = new \DbSelect($table);
+        $select->join($jtable, ['j0' => [$table, 'k0']], ['j1']);
+        $select->join($jtable, ['j1' => [$table, 'k1']], ['j0']);
+
+        $expected = array_merge($data1, ['id' => $id, 'j1' => $jdata11['j1'], 'j0' => $jdata21['j0']]);
+        $this->assertEquals([$expected], $db->query($select));
+    }
+
+    public function testScalarJoin()
+    {
+        $db = new \DbVirtual();
+
+        $table = 'tbl' . rand(100, 199);
+        $keys = ['k0', 'k1', 'k2'];
+        $db->insert($table, $data1 = $this->generateData($keys));
+        $data1['id'] = $db->lastInsertId();
+        $db->insert($table, $data2 = $this->generateData($keys));
+        $data2['id'] = $db->lastInsertId();
+
+        $jtable = 'tbl' . rand(200, 299);
+        $jkeys = ['j0', 'j1'];
+        $db->insert($jtable, $jdata11 = $this->generateData($jkeys));
+        $key = $jdata11['j1'];
+        $db->insert($jtable, $jdata12 = $this->generateData($jkeys));
+        $db->insert($jtable, $jdata13 = $this->generateData($jkeys));
+
+        $select = new \DbSelect($table);
+        $select->join($jtable, ['j1' => $key], ['j0', 'j1']);
+
+        $expected = [array_merge($data1, $jdata11), array_merge($data2, $jdata11)];
+        $this->assertEquals($expected, $db->query($select));
+    }
+
+    public function testDoubleSameTableJoin()
+    {
+        $db = new \DbVirtual();
+
+        $jtable = 'user';
+        $jkeys = ['name', 'manager_id'];
+        $db->insert($jtable, $jdata11 = ['name' => $this->randValue(), 'manager_id' => null]);
+        $mid = $db->lastInsertId();
+        $db->insert($jtable, $jdata12 = ['name' => $this->randValue(), 'manager_id' => $mid]);
+        $uid = $db->lastInsertId();
+        $db->insert($jtable, $jdata13 = ['name' => $this->randValue(), 'manager_id' => $mid]);
+        $db->insert($jtable, $jdata14 = ['name' => $this->randValue(), 'manager_id' => $mid]);
+
+        $table = 'activity';
+        $keys = ['name', 'user_id'];
+        $db->insert($table, $data = ['name' => $this->randValue(), 'user_id' => $uid]);
+        $id = $db->lastInsertId();
+
+        $select = new \DbSelect($table);
+        $select->join([$jtable, 'u'], ['id' => [$table, 'user_id']], ['name' => 'uname']);
+        $select->join($jtable, ['id' => ['u', 'manager_id']], ['name' => 'manager']);
+
+        $expected = array_merge($data, ['id' => $id, 'uname' => $jdata12['name'], 'manager' => $jdata11['name']]);
+        $this->assertEquals([$expected], $db->query($select));
+    }
+
 }

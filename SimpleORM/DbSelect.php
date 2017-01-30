@@ -170,33 +170,25 @@ class DbSelect
         if (!$this->isName($table[0]))
             throw new \Exception(self::ERROR_JOIN_TABLE);
 
-
-
         // columns
-        if ($columns !== '*')
+        foreach ($columns as $key => $alias)
         {
-            if (!is_array($columns))
+            if (!is_scalar($key) || !$this->isName($alias))
                 throw new \Exception(self::ERROR_JOIN_COLUMS);
 
-            foreach ($columns as $key => $alias)
-            {
-                if (!is_scalar($key) || !$this->isName($alias))
-                    throw new \Exception(self::ERROR_JOIN_COLUMS);
-
-                if (!is_int($key) && !$this->isName($key))
-                    throw new \Exception(self::ERROR_JOIN_COLUMS);
-            }
+            if (!is_int($key) && !$this->isName($key))
+                throw new \Exception(self::ERROR_JOIN_COLUMS);
         }
 
         $this->_joins[$table[1]] = new \DbJoin($type, $table[0], $on, $columns);
     }
 
-    public function join($table, $on, $columns = array())
+    public function join($table, $on, array $columns = array())
     {
         $this->_join(\DbJoin::TYPE_INNER, $table, $on, $columns);
     }
 
-    public function joinLeft($table, $on, $columns = array())
+    public function joinLeft($table, $on, array $columns = array())
     {
         $this->_join(\DbJoin::TYPE_LEFT, $table, $on, $columns);
     }
