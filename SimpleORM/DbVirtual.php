@@ -11,6 +11,7 @@ class DbVirtual implements IDbAdapter
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
     private $_pdo;
+    private $_order;
 
     public $last_id;
     public $tables = array();
@@ -153,6 +154,28 @@ class DbVirtual implements IDbAdapter
         }
     }
 
+    public function _compare($a, $b)
+    {
+        foreach ($this->_order as $key => $direction)
+        {
+            if (!array_key_exists($key, $a) || !array_key_exists($key, $b))
+                throw new Exception('Unknown sorting key: ' . $key);
+
+            if ($a[$key] == $b[$key])
+                continue;
+
+            if (is_int($a[$key]) || is_float($a[$key]))
+                $res = $a[$key] > $b[$key] ? 1 : -1;
+            else
+                $res = strcmp($a[$key], $b[$key]);
+
+            return ($direction == 'ASC') ? $res : -1 * $res;
+        }
+
+        return 0;
+    }
+
+
     public function query(\DbSelect $select)
     {
         $table = $select->getTable();
@@ -208,6 +231,14 @@ class DbVirtual implements IDbAdapter
             }
 
             $result = $temp;
+        }
+
+
+        // process order
+        if ($select->getOrder())
+        {
+            $this->_order = $select->getOrder();
+            usort($result, array($this, '_compare'));
         }
 
 

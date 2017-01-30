@@ -406,6 +406,58 @@ class Test_DbVirtual extends Test_Abstract
         $this->assertEquals($expected, $db->query($select));
     }
 
+    public function testOrder()
+    {
+        $db = new \DbVirtual();
+
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $keys = $this->generateKeys(rand(5, 8));
+
+        // generate data
+        $expected = [];
+        for ($i = rand(2, 3); $i > 0; $i--)
+        {
+            $data = $this->generateData($keys);
+            $data[$keys[0]] = $i;
+            $data[$keys[1]] = 100 - $i;
+            $data[$keys[2]] = 'Hello!';
+            $db->insert($table, $data);
+            $data['id'] = $db->lastInsertId();
+            $expected[$i] = $data;
+        }
+
+        // sort by k0 asc
+        ksort($expected);
+        $select = new \DbSelect($table);
+        $select->setOrder($keys[0]);
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        $select->setOrder($keys[0] . ' asc');
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        $select->setOrder($keys[0] . ' ASC');
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        $select->setOrder('`' . $keys[0] . '` asc');
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        // sort by k0 desc
+        krsort($expected);
+        $select->setOrder($keys[0] . ' DESC');
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        // sort by k1 ASC
+        $select->setOrder($keys[1]);
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        // k2 ASC, k0 DESC
+        $select->setOrder($keys[2] . ', ' . $keys[0] . ' DESC');
+        $this->assertEquals(array_values($expected), $db->query($select));
+
+        
+    }
+
 
 
 }
