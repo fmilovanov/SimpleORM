@@ -160,6 +160,14 @@ class DbVirtual implements IDbAdapter
         if (!isset($this->tables[$table]))
             throw new \Exception(self::ERROR_NO_TABLE);
 
+        if ($columns = $select->getColumns())
+        {
+            //
+        }
+        else $columns = '*';
+
+
+
         $result = array();
         foreach ($this->tables[$table] as $id => $data)
         {
@@ -181,6 +189,27 @@ class DbVirtual implements IDbAdapter
 
             $result[] = $data;
         }
+
+        
+        // select columns
+        if ($columns != '*')
+        {
+            $temp = [];
+            foreach ($result as $data)
+            {
+                $new_data = [];
+                foreach ($data as $key => $value)
+                {
+                    if (in_array($key, $columns))
+                        $new_data[$key] = $value;
+                }
+
+                $temp[] = $new_data;
+            }
+
+            $result = $temp;
+        }
+
 
         return $result;
     }

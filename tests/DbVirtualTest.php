@@ -374,4 +374,38 @@ class Test_DbVirtual extends Test_Abstract
         $this->assertEquals(array($data1), $db->query($select));
     }
 
+    public function testColumns()
+    {
+        $db = new \DbVirtual();
+
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $keys = $this->generateKeys(rand(6, 10));
+        do
+        {
+            $select_keys = [];
+            foreach ($keys as $key)
+            {
+                if (rand(0, 3) < 2)
+                    $select_keys[] = $key;
+            }
+        } while(!count($select_keys) || (count($keys) == count($select_keys)));
+
+        // generate data
+        $expected = [];
+        for ($i = rand(5, 8); $i > 0; $i--)
+        {
+            $db->insert($table, $data = $this->generateData($keys));
+            $temp = [];
+            foreach ($select_keys as $key)
+                $temp[$key] = $data[$key];
+            $expected[] = $temp;
+        }
+
+        $select = new \DbSelect($table, $select_keys);
+        $this->assertEquals($expected, $db->query($select));
+    }
+
+
+
 }
