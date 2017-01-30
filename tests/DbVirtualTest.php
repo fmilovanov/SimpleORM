@@ -492,6 +492,46 @@ class Test_DbVirtual extends Test_Abstract
         $this->assertEquals(array_slice(array_values($expected), 2, 3), $db->query($select));
     }
 
+    public function testSimpleJoin()
+    {
+        $db = new \DbVirtual();
 
+        // generate teble/keys/select keys
+        $table = 'tbl' . rand(100, 199);
+        $jtable = 'tbl' . rand(200, 299);
+        $keys = $this->generateKeys(rand(5, 8));
+        $jkeys = $this->generateKeys(rand(2, 5), 'j1_');
+
+        $expected = [];
+
+        $db->insert($table, $data1 = $this->generateData($keys));
+        $data1['id'] = $db->lastInsertId();
+        $db->insert($jtable, $jdata11 = $this->generateData($jkeys, [$jkeys[0] => $data1[$keys[0]]]));
+        $expected[] = array_merge($data1, $jdata11);
+        $db->insert($jtable, $jdata12 = $this->generateData($jkeys, [$jkeys[0] => $data1[$keys[0]]]));
+        $expected[] = array_merge($data1, $jdata12);
+
+        $db->insert($table, $data2 = $this->generateData($keys));
+        $data2['id'] = $db->lastInsertId();
+        $db->insert($jtable, $jdata21 = $this->generateData($jkeys, [$jkeys[0] => $data2[$keys[0]]]));
+        $expected[] = array_merge($data2, $jdata21);
+
+        $db->insert($table, $data3 = $this->generateData($keys));
+        $data3['id'] = $db->lastInsertId();
+
+        $select = new \DbSelect($table);
+        $select->join($jtable, [$jkeys[0] => [$table, $keys[0]]], $jkeys);
+        $this->assertEquals($expected, $db->query($select));
+        
+        // try left join
+        $jdata3 = [];
+        foreach ($jkeys as $key)
+            $jdata3[$key] = null;
+        $expected[] = array_merge($data3, $jdata3);
+
+        $select = new \DbSelect($table);
+        $select->joinLeft($jtable, [$jkeys[0] => [$table, $keys[0]]], $jkeys);
+        $this->assertEquals($expected, $db->query($select));
+    }
 
 }

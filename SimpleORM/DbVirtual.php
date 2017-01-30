@@ -175,6 +175,51 @@ class DbVirtual implements IDbAdapter
         return 0;
     }
 
+    private function _join(array $jresult, $alias, \DbJoin $join)
+    {
+        $result = [];
+        foreach ($jresult as $row)
+        {
+            $empty_join = false;
+            $select = new \DbSelect($join->table);
+            foreach ($join->on as $key => $value)
+            {
+                if (is_array($value))
+                {
+                    if (is_array($row[$value[0]]))
+                    {
+                        $where = $row[$value[0]][$value[1]];
+                        $select->where($key, $where ? $where : \DbSelect::is_null());
+                    }
+                    else $empty_join = true;
+                }
+                elseif (is_object($value) || is_scalar($value))
+                {
+                    $select->where($key, $value);
+                }
+            }
+
+            // join those rows
+            $count = 0;
+            if (!$empty_join)
+            {
+                foreach ($this->query($select) as $jrow)
+                {
+                    $row[$alias] = $jrow;
+                    $result[] = $row;
+                    $count += 1;
+                }
+            }
+
+            if (!$count && ($join->type == \DbJoin::TYPE_LEFT))
+            {
+                $row[$alias] = true;
+                $result[] = $row;
+            }
+        }
+
+        return $result;
+    }
 
     public function query(\DbSelect $select)
     {
@@ -189,9 +234,8 @@ class DbVirtual implements IDbAdapter
         }
         else $columns = '*';
 
-
-
-        $result = array();
+        // main select
+        $jresult = array();
         foreach ($this->tables[$table] as $id => $data)
         {
             foreach ($select->getWhere() as $conditions)
@@ -210,30 +254,58 @@ class DbVirtual implements IDbAdapter
                     continue 2;
             }
 
-            $result[] = $data;
+            $jresult[] = [$table => $data];
         }
 
-        
-        // select columns
-        if ($columns != '*')
+        // process joins
+        $join_columns = [];
+        foreach ($select->getJoins() as $jalias => $join)
         {
-            $temp = [];
-            foreach ($result as $data)
+            $jresult = $this->_join($jresult, $jalias, $join);
+            if ($join->columns)
+                $join_columns[$jalias] = $join->columns;
+        }
+
+        // denormalize
+        $result = [];
+        foreach ($jresult as $data)
+        {
+            // denormalize table
+            if (is_array($columns))
             {
-                $new_data = [];
-                foreach ($data as $key => $value)
+                $row = [];
+                foreach ($data[$table] as $key => $value)
                 {
                     if (in_array($key, $columns))
-                        $new_data[$key] = $value;
+                        $row[$key] = $value;
                 }
+            }
+            else $row = $data[$table];
 
-                $temp[] = $new_data;
+            // denormalize joins
+            foreach ($join_columns as $jalias => $jcolumns)
+            {
+                if (is_array($jcolumns))
+                {
+                    foreach ($jcolumns as $key => $value)
+                    {
+                        if (is_array($data[$jalias]))
+                            $row[$value] = $data[$jalias][is_numeric($key) ? $value : $key];
+                        else
+                            $row[$value] = null;
+                    }
+                }
+                else
+                {
+                    foreach ($jresult[$jalias] as $key => $value)
+                        $row[$key] = $value;
+                }
             }
 
-            $result = $temp;
+
+            $result[] = $row;
         }
-
-
+        
         // process order
         if ($select->getOrder())
         {

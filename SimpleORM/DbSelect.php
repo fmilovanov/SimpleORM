@@ -141,6 +141,10 @@ class DbSelect
         return $this->_columns;
     }
 
+    /**
+     *
+     * @return \DbJoin[]
+     */
     public function getJoins()
     {
         return $this->_joins;
