@@ -18,6 +18,9 @@ class DbVirtual implements IDbAdapter
     const ERROR_TRANSACTION     = 'already in transaction';
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
+    const ERROR_VALUE_NULL      = '`$s` can not be null';
+    const ERROR_VALUE_INT       = '`$s` is not an int';
+
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
     private $_pdo;
@@ -34,7 +37,14 @@ class DbVirtual implements IDbAdapter
         $this->last_id = rand(100, 299);
     }
 
-    private function _validate($table, array $data, $populate= false)
+    private function _throw()
+    {
+        $str = call_user_func_array('sprintf', func_get_args());
+
+        throw new Exception($str);
+    }
+
+    private function _validate($table, array &$data, $populate= false)
     {
         if (!array_key_exists($table, $this->_table_def))
             return true;
@@ -52,14 +62,13 @@ class DbVirtual implements IDbAdapter
                 if (!$field->null)
                 {
                     if (!$populate)
-                        throw new \Exception("`$key` can not be null");
+                        $this->_throw(self::ERROR_VALUE_NULL, $key);
 
                     if (!isset($field->default))
                         throw new \Exception("`$key` does not have default value");
-                }
 
-                if ($populate && isset($field->default))
                     $data[$key] = $field->default;
+                }
 
                 continue;
             }
@@ -72,7 +81,7 @@ class DbVirtual implements IDbAdapter
             {
                 case self::TYPE_INT:
                     if (!is_int($value) && !preg_match('/^[-+]?\d+$/', $value))
-                        throw new \Exception("`$key` is not an int");
+                        $this->_throw(self::ERROR_VALUE_INT, $key);
                     break;
 
                 case self::TYPE_FLOAT:
@@ -98,12 +107,19 @@ class DbVirtual implements IDbAdapter
                 default:
                     break;
             }
-
-
-
-
-
         }
+
+        if ($populate)
+        {
+            foreach ($table as $key => $column)
+            {
+                if (array_key_exists($key, $data))
+                    continue;
+
+                $data[$key] = isset($column->default) ? $column->default : NULL;
+            }
+        }
+
     }
 
     public function insert($table, array $data)
@@ -112,6 +128,10 @@ class DbVirtual implements IDbAdapter
         {
             $this->tables[$table] = array();
         }
+
+        $this->_validate($table, $data, true);
+
+
 
         $this->last_id += 1;
         $data['id'] = $this->last_id;
@@ -143,6 +163,8 @@ class DbVirtual implements IDbAdapter
 
     public function update($table, array $data, array $where)
     {
+        $this->_validate($table, $data);
+
         foreach ($this->_simpleMatch($table, $where) as $id)
         {
             foreach ($data as $key => $value)
