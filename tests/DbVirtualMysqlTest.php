@@ -307,5 +307,110 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertEquals($expected, array_values($db->tables[$table]));
     }
 
+    public function testFloatNotNull()
+    {
+        $table = 'tbl' . rand(100, 999);
+        $key = 'key' . rand(100, 999);
+        $default = rand(1000, 3999) / 100;
+ 
+        $pdo = new PDOMySQL();
+        $pdo->tables[$table] = "CREATE TABLE `$table`(\n  `$key` float NOT NULL DEFAULT '$default'\n)";
+
+        $db = new DbVirtual($pdo);
+        $db->createTable($table);
+
+        // try bad values
+        $expected = [];
+        foreach (['hello', false] as $value)
+        {
+            try
+            {
+                $db->insert($table, [$key => $value]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf(DbVirtual::ERROR_VALUE_FLOAT, $key), $e->getMessage());
+                $this->assertEquals($expected, $db->tables[$table]);
+            }
+        }
+
+        // float float
+        $value = rand(4000, 4999) / 100;
+        $db->insert($table, [$key => $value]);
+        $expected[] = ['id' => $db->lastInsertId(), $key => $value];
+
+        // string float
+        $value = (rand(5000, 5999) / 100) . '';
+        $db->insert($table, [$key => $value]);
+        $expected[] = ['id' => $db->lastInsertId(), $key => $value];
+
+        // int float
+        $value = rand(60, 69);
+        $db->insert($table, [$key => $value]);
+        $expected[] = ['id' => $db->lastInsertId(), $key => $value];
+
+        // NULL
+        $db->insert($table, [$key => NULL]);
+        $expected[] = ['id' => $db->lastInsertId(), $key => $default];
+
+        // missing
+        $db->insert($table, []);
+        $expected[] = ['id' => $id = $db->lastInsertId(), $key => $default];
+
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+
+        // update bad values
+        foreach (['hello', false] as $value)
+        {
+            try
+            {
+                $db->update($table, [$key => $value], ['id' => $id]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf(DbVirtual::ERROR_VALUE_FLOAT, $key), $e->getMessage());
+                $this->assertEquals($expected, array_values($db->tables[$table]));
+            }
+        }
+
+        // update NULL
+        try
+        {
+            $db->update($table, [$key => NULL], ['id' => $id]);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(DbVirtual::ERROR_VALUE_NULL, $key), $e->getMessage());
+            $this->assertEquals($expected, array_values($db->tables[$table]));
+        }
+
+        // float float
+        $expected[4][$key] = $value = rand(7000, 7999) / 100;
+        $db->update($table, [$key => $value], ['id' => $id]);
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+
+        // string float
+        $expected[4][$key] = $value = (rand(8000, 8999) / 100) . '';
+        $db->update($table, [$key => $value], ['id' => $id]);
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+
+        // int float
+        $expected[4][$key] = $value = rand(90, 99);
+        $db->update($table, [$key => $value], ['id' => $id]);
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+
+        // zero-lead float
+        $expected[4][$key] = $value = rand(10, 99) / 100;
+        $db->update($table, [$key => $value], ['id' => $id]);
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+
+        // zero lead string
+        $expected[4][$key] = $value = '.' . rand(10, 99);
+        $db->update($table, [$key => $value], ['id' => $id]);
+        $this->assertEquals($expected, array_values($db->tables[$table]));
+    }
 
 }

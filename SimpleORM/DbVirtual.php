@@ -20,6 +20,7 @@ class DbVirtual implements IDbAdapter
 
     const ERROR_VALUE_NULL      = '`$s` can not be null';
     const ERROR_VALUE_INT       = '`$s` is not an int';
+    const ERROR_VALUE_FLOAT     = '`$s` is not an float';
 
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
@@ -86,7 +87,7 @@ class DbVirtual implements IDbAdapter
 
                 case self::TYPE_FLOAT:
                     if (!is_float($value) && !is_numeric($value))
-                        throw new \Exception("`$key` is not an float");
+                        $this->_throw(self::ERROR_VALUE_FLOAT, $key);
                     break;
 
                 case self::TYPE_ENUM:
