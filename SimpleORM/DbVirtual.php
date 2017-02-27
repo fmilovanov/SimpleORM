@@ -426,7 +426,7 @@ class DbVirtual implements IDbAdapter
                 if (preg_match("/DEFAULT '(.*)'/", $m[3], $n))
                     $column->default = str_replace("''", "'", $n[1]);
 
-                if (preg_match('/^(|small|medium|big)int[(](\d+)[)]/', $m[2], $n))
+                if (preg_match('/^(|tiny|small|medium|big)int[(](\d+)[)]/', $m[2], $n))
                 {
                     $column->type = self::TYPE_INT;
                     $column->len = $n[2];
@@ -441,7 +441,7 @@ class DbVirtual implements IDbAdapter
                     $column->type = self::TYPE_CHAR;
                     $column->len = 65536;
                 }
-                elseif (preg_match('/(decimal|float)/', $m[2]))
+                elseif (preg_match('/(decimal|float|double)/', $m[2]))
                 {
                     $column->type = self::TYPE_FLOAT;
                 }
@@ -506,6 +506,14 @@ class DbVirtual implements IDbAdapter
 
 //        print_r($this->_table_def);
         
+    }
+
+    public function getTableDef($name)
+    {
+        if (!isset($this->_table_def[$name]))
+            throw new Exception('No table found');
+
+        return $this->_table_def[$name];
     }
 
     public function createTable($name)
