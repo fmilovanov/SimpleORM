@@ -18,6 +18,8 @@ class DbVirtual implements IDbAdapter
     const ERROR_TRANSACTION     = 'already in transaction';
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
+    const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
+
     private $_pdo;
     private $_order;
 
@@ -30,6 +32,78 @@ class DbVirtual implements IDbAdapter
     {
         $this->_pdo = $pdo;
         $this->last_id = rand(100, 299);
+    }
+
+    private function _validate($table, array $data, $populate= false)
+    {
+        if (!array_key_exists($table, $this->_table_def))
+            return true;
+
+        $table = $this->_table_def[$table];
+        foreach ($data as $key => $value)
+        {
+            if (!isset($table[$key]))
+                throw new \Exception("Unknown column '$key' in 'field list");
+
+            $field = $table[$key];
+
+            if (is_null($value))
+            {
+                if (!$field->null)
+                {
+                    if (!$populate)
+                        throw new \Exception("`$key` can not be null");
+
+                    if (!isset($field->default))
+                        throw new \Exception("`$key` does not have default value");
+                }
+
+                if ($populate && isset($field->default))
+                    $data[$key] = $field->default;
+
+                continue;
+            }
+
+
+            if (!is_scalar($value))
+                throw new \Exception("`$key` is not scalar");
+
+            switch ($table[$key]->type)
+            {
+                case self::TYPE_INT:
+                    if (!is_int($value) && !preg_match('/^[-+]?\d+$/', $value))
+                        throw new \Exception("`$key` is not an int");
+                    break;
+
+                case self::TYPE_FLOAT:
+                    if (!is_float($value) && !is_numeric($value))
+                        throw new \Exception("`$key` is not an float");
+                    break;
+
+                case self::TYPE_ENUM:
+                    if (!in_array($value, $table[$key]->values, true))
+                        throw new \Exception("`$key` is invalid value");
+                    break;
+
+                case self::TYPE_DATE:
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2}', $value))
+                        throw new \Exception("`$key` is not a valid date");
+                    break;
+
+                case self::TYPE_DATETIME:
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', $value))
+                        throw new \Exception("`$key` is not a valid datetime");
+                    break;
+
+                default:
+                    break;
+            }
+
+
+
+
+
+        }
     }
 
     public function insert($table, array $data)
@@ -348,11 +422,9 @@ class DbVirtual implements IDbAdapter
             if (preg_match('/^\s+`([^`]+)`\s+([^ ]+)\s+(.*)$/', $string, $m))
             {
                 $column = new stdClass();
-                $column->primary = false;
                 $column->null = !preg_match('/NOT NULL/', $m[3]);
                 if (preg_match("/DEFAULT '(.*)'/", $m[3], $n))
                     $column->default = str_replace("''", "'", $n[1]);
-
 
                 if (preg_match('/^(|small|medium|big)int[(](\d+)[)]/', $m[2], $n))
                 {
@@ -376,6 +448,11 @@ class DbVirtual implements IDbAdapter
                 elseif (preg_match('/^(datetime|timestamp)/', $m[2]))
                 {
                     $column->type = self::TYPE_DATETIME;
+                    if (preg_match('/DEFAULT CURRENT_TIMESTAMP/', $m[3]))
+                        $column->default = self::DEFAULT_CTS;
+                    if (preg_match('/ON UPDATE CURRENT_TIMESTAMP/', $m[3]))
+                        $column->on_update = self::DEFAULT_CTS;
+
                 }
                 elseif (preg_match('/^date/', $m[2]))
                 {
@@ -392,17 +469,42 @@ class DbVirtual implements IDbAdapter
 
 
 
-                    $this->_table_def[$name][$m[1]] = $column;
+
+                $this->_table_def[$name][$m[1]] = $column;
                 //print_r($m);
             }
 
+            if (preg_match('/CONSTRAINT `([^`]+)` FOREIGN KEY \(`([^`]+)`\) REFERENCES `([^`]+)` \(`([^`]+)`\)/', $string, $m))
+            {
+                $ref = $m[1];
+                $field = $m[2];
+                $table = $m[3];
+                $ref_field = $m[4];
+                if (!array_key_exists($field, $this->_table_def[$name]))
+                    throw new \Exception("`$ref`: no field found");
+
+                if (!array_key_exists($table, $this->_table_def))
+                    throw new \Exception("`$ref`: no ref table found");
+
+                if (!array_key_exists($ref_field, $this->_table_def[$table]))
+                    throw new \Exception("`$ref`: no ref field found");
+
+                if (!isset($this->_table_def[$name][$field]->fk))
+                    $this->_table_def[$name][$field]->fk = [];
+
+                if (!isset($this->_table_def[$table][$ref_field]->ref))
+                    $this->_table_def[$table][$ref_field]->ref = [];
+
+                $this->_table_def[$name][$field]->fk[$ref] = [$table, $ref_field];
+                $this->_table_def[$table][$ref_field]->ref[$ref] = [$name, $field];
+            }
 
 
         }
 
 
 
-        print_r($this->_table_def);
+//        print_r($this->_table_def);
         
     }
 
