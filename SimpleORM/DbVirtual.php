@@ -22,6 +22,9 @@ class DbVirtual implements IDbAdapter
     const ERROR_VALUE_NO_DEFAULT= '`$s` does not have default value';
     const ERROR_VALUE_INT       = '`$s` is not an int';
     const ERROR_VALUE_FLOAT     = '`$s` is not an float';
+    const ERROR_VALUE_ENUM      = '`$s` has invalid value';
+    const ERROR_VALUE_DATE      = '`$s` is not a valid date';
+    const ERROR_VALUE_DATETIME  = '`$s` is not a valid datetime';
 
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
@@ -93,17 +96,17 @@ class DbVirtual implements IDbAdapter
 
                 case self::TYPE_ENUM:
                     if (!in_array($value, $table[$key]->values, true))
-                        throw new \Exception("`$key` is invalid value");
+                        $this->_throw(self::ERROR_VALUE_ENUM, $key);
                     break;
 
                 case self::TYPE_DATE:
-                    if (!preg_match('/^\d{4}-\d{2}-\d{2}', $value))
-                        throw new \Exception("`$key` is not a valid date");
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value))
+                        $this->_throw(self::ERROR_VALUE_DATE, $key);
                     break;
 
                 case self::TYPE_DATETIME:
-                    if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', $value))
-                        throw new \Exception("`$key` is not a valid datetime");
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $value))
+                        $this->_throw(self::ERROR_VALUE_DATETIME, $key);
                     break;
 
                 default:

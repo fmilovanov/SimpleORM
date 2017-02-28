@@ -518,4 +518,40 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->validateType('float', $default, $invalid, $valid, DbVirtual::ERROR_VALUE_FLOAT);
     }
 
+    public function testEnum()
+    {
+        $enum = [];
+        for ($i = rand(4, 8); $i >= 0; $i--)
+            $enum[] = 'val' . rand(100, 999);
+
+        $type = "enum('" . implode("','", $enum) . "')";
+        $default = $enum[0];
+        $invalid = ['hello', false, -1, 33, 1.66];
+
+        $this->validateType($type, $enum[0], $invalid, $enum, DbVirtual::ERROR_VALUE_ENUM);
+    }
+
+    public function testDate()
+    {
+        $default = date('Y-m-d', time() - rand(3, 20) * 24 * 60 * 60);
+        $invalid = ['hello', false, -1, 44, 4.66, date('Y-m-d H:i:s')];
+        $valid = [];
+        for ($i = rand(3, 8); $i >= 0; $i--)
+            $valid[] = date('Y-m-d', time() - $i * 24 * 60 * 60);
+
+        $this->validateType('date', $default, $invalid, $valid, DbVirtual::ERROR_VALUE_DATE);
+    }
+
+    public function testDatetime()
+    {
+        $default = date('Y-m-d H:i:s', time() - rand(3, 20) * 24 * 60 * 60);
+        $invalid = ['hello', false, -1, 44, 4.66, date('Y-m-d')];
+        $valid = [];
+        for ($i = rand(3, 8); $i >= 0; $i--)
+            $valid[] = date('Y-m-d H:i:s', time() - $i * 8 * 60 * 60);
+
+        $this->validateType('datetime', $default, $invalid, $valid, DbVirtual::ERROR_VALUE_DATETIME);
+    }
+
+
 }
