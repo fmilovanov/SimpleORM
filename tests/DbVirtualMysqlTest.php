@@ -602,6 +602,44 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertArrayHasKey($key1, $def1);
         $this->assertObjectHasAttribute('ref', $def1[$key1]);
         $this->assertEquals([$ref => [$table2, $key2]], $def1[$key1]->ref);
+
+        // try to insert w/out a ref
+        $value1 = rand(1000, 4999);
+        try
+        {
+            $db->insert($table2, [$key2 => $value1]);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_CHILD, $table2, $ref, $key2, $table1, $key1);
+            $this->assertEquals($error, $e->getMessage());
+        }
+
+        // insert ref
+        $db->insert($table1, [$key1 => $value1]);
+        $id1 = $db->lastInsertId();
+        $db->insert($table2, [$key2 => $value1]);
+        $id2 = $db->lastInsertId();
+
+        // try to update to an empty ref
+        $value2 = rand(5000, 5999);
+        try
+        {
+            $db->update($table2, [$key2 => $value2], ['id' => $id2]);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_CHILD, $table2, $ref, $key2, $table1, $key1);
+            $this->assertEquals($error, $e->getMessage());
+        }
+
+        // insert another ref value
+        $db->insert($table1, [$key1 => $value2]);
+        $db->update($table2, [$key2 => $value2], ['id' => $id2]);
+
+        // update 
     }
 
 

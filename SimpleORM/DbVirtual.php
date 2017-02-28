@@ -29,6 +29,8 @@ class DbVirtual implements IDbAdapter
     const ERROR_VALUE_DATETIME      = '`%s` is not a valid datetime';
 
     const ERROR_NO_REF_TABLE        = '`%s`: no ref table found';
+    const ERROR_FOREIGN_KEY_CHILD   = '#1452 - Cannot add or update a child row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)) ';
+    const ERROR_FOREIGN_KEY_PARENT  = '#1451 - Cannot delete or update a parent row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)) ';
 
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
@@ -58,13 +60,13 @@ class DbVirtual implements IDbAdapter
         if (!array_key_exists($table, $this->_table_def))
             return true;
 
-        $table = $this->_table_def[$table];
+        $table_def = $this->_table_def[$table];
         foreach ($data as $key => $value)
         {
-            if (!isset($table[$key]))
+            if (!isset($table_def[$key]))
                 throw new \Exception("Unknown column '$key' in 'field list");
 
-            $field = $table[$key];
+            $field = $table_def[$key];
 
             if (is_null($value))
             {
@@ -86,7 +88,7 @@ class DbVirtual implements IDbAdapter
             if (!is_scalar($value))
                 $this->_throw(self::ERROR_VALUE_NOT_SCALAR, $key);
 
-            switch ($table[$key]->type)
+            switch ($table_def[$key]->type)
             {
                 case self::TYPE_INT:
                     if (!is_int($value) && !preg_match('/^[-+]?\d+$/', $value))
@@ -104,7 +106,7 @@ class DbVirtual implements IDbAdapter
                     break;
 
                 case self::TYPE_ENUM:
-                    if (!in_array($value, $table[$key]->values, true))
+                    if (!in_array($value, $table_def[$key]->values, true))
                         $this->_throw(self::ERROR_VALUE_ENUM, $key);
                     break;
 
@@ -125,7 +127,7 @@ class DbVirtual implements IDbAdapter
 
         if ($populate)
         {
-            foreach ($table as $key => $column)
+            foreach ($table_def as $key => $column)
             {
                 if (array_key_exists($key, $data))
                     continue;
@@ -141,6 +143,25 @@ class DbVirtual implements IDbAdapter
             }
         }
 
+        // check foreign keys
+        foreach ($data as $key => $value)
+        {
+            $field = $table_def[$key];
+
+            if (isset($field->fk))
+            {
+                foreach ($field->fk as $ref => $def)
+                {
+                    if (!$this->_simpleMatch($def[0], [$def[1] => $value]))
+                        $this->_throw(self::ERROR_FOREIGN_KEY_CHILD, $table, $ref, $key, $def[0], $def[1]);
+                }
+            }
+
+            if (isset($field->ref))
+            {
+                
+            }
+        }
     }
 
     public function insert($table, array $data)
