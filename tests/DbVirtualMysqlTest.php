@@ -21,7 +21,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         return self::$__int_base;
     }
 
-        public function testTableNotExist()
+    public function testTableNotExist()
     {
         $table = 'tbl' . rand(100, 999);
 
@@ -537,6 +537,71 @@ class Test_DbVirtualMySQL extends Test_Abstract
             $valid[] = date('Y-m-d H:i:s', time() - $i * 8 * 60 * 60);
 
         $this->validateType('datetime', $default, $invalid, $valid, DbVirtual::ERROR_VALUE_DATETIME);
+    }
+
+    public function testCreateForeignKeys()
+    {
+        $table1 = 'tbl' . rand(100, 499);
+        $key1 = 'key' . $this->int();
+        $ct1 = "CREATE TABLE `$table1` (\n"
+             . "  `$key1` int(11) NOT NULL\n"
+             . ");\n";
+
+
+        $table2 = 'tbl' . rand(500, 599);
+        $key2 = 'key' . $this->int();
+        $ref = "fk_${table2}_${key2}";
+        $ct2 = "CREATE TABLE `$table2` (\n"
+             . "  `$key2` int(11) NOT NULL,\n"
+             . "  CONSTRAINT `$ref` FOREIGN KEY (`$key2`) REFERENCES `$table1` (`$key1`)\n"
+             . ");\n";
+
+
+        $pdo = new PDOMySQL();
+        $pdo->tables[$table1] = $ct1;
+        $pdo->tables[$table2] = $ct2;
+
+        $db = new DbVirtual($pdo);
+
+        // try to create 2nd table first
+        try
+        {
+            $db->createTable($table2);
+            $this->fail();
+        }
+        catch (\Exception $e)
+        {
+            $this->assertEquals(sprintf(DbVirtual::ERROR_NO_REF_TABLE, $ref), $e->getMessage());
+            $this->assertEquals([], $db->tables);
+            try
+            {
+                $db->getTableDef($table2);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals('No table found', $e->getMessage());
+            }
+        }
+
+        // create 1st table
+        $db->createTable($table1);
+        $def1 = $db->getTableDef($table1);
+        $this->assertArrayHasKey($key1, $def1);
+        $this->assertObjectNotHasAttribute('ref', $def1[$key1]);
+
+        // create 2nd table
+        $db->createTable($table2);
+        $def2 = $db->getTableDef($table2);
+        $this->assertArrayHasKey($key2, $def2);
+        $this->assertObjectHasAttribute('fk', $def2[$key2]);
+        $this->assertEquals([$ref => [$table1, $key1]], $def2[$key2]->fk);
+
+        // check 1st table def
+        $def1 = $db->getTableDef($table1);
+        $this->assertArrayHasKey($key1, $def1);
+        $this->assertObjectHasAttribute('ref', $def1[$key1]);
+        $this->assertEquals([$ref => [$table2, $key2]], $def1[$key1]->ref);
     }
 
 

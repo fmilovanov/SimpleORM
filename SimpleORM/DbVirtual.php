@@ -18,15 +18,17 @@ class DbVirtual implements IDbAdapter
     const ERROR_TRANSACTION     = 'already in transaction';
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
-    const ERROR_VALUE_NULL          = '`$s` can not be null';
-    const ERROR_VALUE_NOT_SCALAR    = '`$s` is not a scalar';
-    const ERROR_VALUE_NO_DEFAULT    = '`$s` does not have default value';
-    const ERROR_VALUE_INT           = '`$s` is not an int';
-    const ERROR_VALUE_CHAR          = '`$s` is too long';
-    const ERROR_VALUE_FLOAT         = '`$s` is not an float';
-    const ERROR_VALUE_ENUM          = '`$s` has invalid value';
-    const ERROR_VALUE_DATE          = '`$s` is not a valid date';
-    const ERROR_VALUE_DATETIME      = '`$s` is not a valid datetime';
+    const ERROR_VALUE_NULL          = '`%s` can not be null';
+    const ERROR_VALUE_NOT_SCALAR    = '`%s` is not a scalar';
+    const ERROR_VALUE_NO_DEFAULT    = '`%s` does not have default value';
+    const ERROR_VALUE_INT           = '`%s` is not an int';
+    const ERROR_VALUE_CHAR          = '`%s` is too long';
+    const ERROR_VALUE_FLOAT         = '`%s` is not an float';
+    const ERROR_VALUE_ENUM          = '`%s` has invalid value';
+    const ERROR_VALUE_DATE          = '`%s` is not a valid date';
+    const ERROR_VALUE_DATETIME      = '`%s` is not a valid datetime';
+
+    const ERROR_NO_REF_TABLE        = '`%s`: no ref table found';
 
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
@@ -456,7 +458,7 @@ class DbVirtual implements IDbAdapter
         if (!preg_match('/^CREATE TABLE /', array_shift($data)))
             throw new Exception('Bad create table');
 
-        $this->_table_def[$name] = [];
+        $table_def = [];
         foreach ($data as $string)
         {
             // column definition
@@ -511,7 +513,7 @@ class DbVirtual implements IDbAdapter
 
 
 
-                $this->_table_def[$name][$m[1]] = $column;
+                $table_def[$m[1]] = $column;
                 //print_r($m);
             }
 
@@ -521,28 +523,27 @@ class DbVirtual implements IDbAdapter
                 $field = $m[2];
                 $table = $m[3];
                 $ref_field = $m[4];
-                if (!array_key_exists($field, $this->_table_def[$name]))
+                if (!array_key_exists($field, $table_def))
                     throw new \Exception("`$ref`: no field found");
 
                 if (!array_key_exists($table, $this->_table_def))
-                    throw new \Exception("`$ref`: no ref table found");
+                    $this->_throw(self::ERROR_NO_REF_TABLE, $ref);
 
                 if (!array_key_exists($ref_field, $this->_table_def[$table]))
                     throw new \Exception("`$ref`: no ref field found");
 
-                if (!isset($this->_table_def[$name][$field]->fk))
-                    $this->_table_def[$name][$field]->fk = [];
+                if (!isset($table_def[$field]->fk))
+                    $table_def[$field]->fk = [];
 
                 if (!isset($this->_table_def[$table][$ref_field]->ref))
                     $this->_table_def[$table][$ref_field]->ref = [];
 
-                $this->_table_def[$name][$field]->fk[$ref] = [$table, $ref_field];
+                $table_def[$field]->fk[$ref] = [$table, $ref_field];
                 $this->_table_def[$table][$ref_field]->ref[$ref] = [$name, $field];
             }
-
-
         }
 
+        $this->_table_def[$name] = $table_def;
 
 
 //        print_r($this->_table_def);
@@ -562,9 +563,12 @@ class DbVirtual implements IDbAdapter
         if (isset($this->tables[$name]))
             return;
 
-        $this->tables[$name] = [];
+        
         if (!$this->_pdo)
+        {
+            $this->tables[$name] = [];
             return;
+        }
 
         switch ($this->_pdo->getAttribute(\PDO::ATTR_DRIVER_NAME))
         {
@@ -576,7 +580,6 @@ class DbVirtual implements IDbAdapter
                 $x = 1;
         }
 
-        
-
+        $this->tables[$name] = [];
     }
 }
