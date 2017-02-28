@@ -19,6 +19,7 @@ class DbVirtual implements IDbAdapter
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
     const ERROR_VALUE_NULL      = '`$s` can not be null';
+    const ERROR_VALUE_NO_DEFAULT= '`$s` does not have default value';
     const ERROR_VALUE_INT       = '`$s` is not an int';
     const ERROR_VALUE_FLOAT     = '`$s` is not an float';
 
@@ -66,7 +67,7 @@ class DbVirtual implements IDbAdapter
                         $this->_throw(self::ERROR_VALUE_NULL, $key);
 
                     if (!isset($field->default))
-                        throw new \Exception("`$key` does not have default value");
+                        $this->_throw(self::ERROR_VALUE_NO_DEFAULT, $key);
 
                     $data[$key] = $field->default;
                 }
@@ -117,7 +118,14 @@ class DbVirtual implements IDbAdapter
                 if (array_key_exists($key, $data))
                     continue;
 
-                $data[$key] = isset($column->default) ? $column->default : NULL;
+                if (!property_exists($column, 'default'))
+                {
+                    if (!$column->null)
+                        $this->_throw(self::ERROR_VALUE_NO_DEFAULT, $key);
+
+                    $data[$key] = NULL;
+                }
+                else  $data[$key] = $column->default;
             }
         }
 
