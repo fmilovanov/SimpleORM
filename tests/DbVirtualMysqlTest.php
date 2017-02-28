@@ -150,6 +150,74 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertEquals($schema, $db->getTableDef($table));
     }
 
+    private function _insertInvalids(DbVirtual $db, $table, array $values, $key, $error, array $expected = [])
+    {
+        // try non-scalar values
+        foreach ([[], [1], new \stdClass()] as $value)
+        {
+            try
+            {
+                $db->insert($table, [$key => $value]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf(DbVirtual::ERROR_VALUE_NOT_SCALAR, $key), $e->getMessage());
+                $this->assertEquals($expected, $db->tables[$table]);
+            }
+        }
+
+        // try invalid values
+        foreach ($values as $value)
+        {
+            try
+            {
+                $db->insert($table, [$key => $value]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf($error, $key), $e->getMessage());
+                $this->assertEquals($expected, $db->tables[$table]);
+            }
+        }
+    }
+
+    private function _updateInvalids(DbVirtual $db, $table, array $values, $key, $error, array $expected)
+    {
+        $id = array_pop(array_values($expected));
+
+        // non-scalar values
+        foreach ([[], [1], new \stdClass()] as $value)
+        {
+            try
+            {
+                $db->update($table, [$key => $value], ['id' => $id]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf(DbVirtual::ERROR_VALUE_NOT_SCALAR, $key), $e->getMessage());
+                $this->assertEquals($expected, $db->tables[$table]);
+            }
+        }
+
+        // invalid values
+        foreach ($values as $value)
+        {
+            try
+            {
+                $db->update($table, [$key => $value], ['id' => $id]);
+                $this->fail();
+            }
+            catch (\Exception $e)
+            {
+                $this->assertEquals(sprintf($error, $key), $e->getMessage());
+                $this->assertEquals($expected, $db->tables[$table]);
+            }
+        }
+    }
+
     private function _validateTypeNotNullDefault($type, $default, array $invalid, array $valid, $error)
     {
         $table = 'tbl' . rand(100, 999);
@@ -164,19 +232,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $expected = [];
 
         // try invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->insert($table, [$key => $value]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_insertInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try valid values
         foreach ($valid as $value)
@@ -201,19 +257,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
 
 
         // try update invalid
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->update($table, [$key => $value], ['id' => $id]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_updateInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try update valids
         foreach ($valid as $value)
@@ -250,19 +294,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $expected = [];
 
         // try invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->insert($table, [$key => $value]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_insertInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try valid values
         foreach ($valid as $value)
@@ -286,19 +318,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertEquals($expected, $db->tables[$table]);
 
         // try update invalid
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->update($table, [$key => $value], ['id' => $id]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_updateInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try update valids
         foreach ($valid as $value)
@@ -329,19 +349,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $expected = [];
 
         // try invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->insert($table, [$key => $value]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_insertInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try valid values
         foreach ($valid as $value)
@@ -377,19 +385,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         }
 
         // update invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->update($table, [$key => $value], ['id' => $id]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_updateInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // update valid values
         foreach ($valid as $value)
@@ -426,19 +422,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $expected = [];
 
         // try invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->insert($table, [$key => $value]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_insertInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // try valid values
         foreach ($valid as $value)
@@ -462,19 +446,7 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertEquals($expected, $db->tables[$table]);
 
         // update invalid values
-        foreach ($invalid as $value)
-        {
-            try
-            {
-                $db->update($table, [$key => $value], ['id' => $id]);
-                $this->fail();
-            }
-            catch (\Exception $e)
-            {
-                $this->assertEquals(sprintf($error, $key), $e->getMessage());
-                $this->assertEquals($expected, $db->tables[$table]);
-            }
-        }
+        $this->_updateInvalids($db, $table, $invalid, $key, $error, $expected);
 
         // update valid values
         foreach ($valid as $value)
@@ -507,6 +479,20 @@ class Test_DbVirtualMySQL extends Test_Abstract
 
         $this->validateType('int(11)', $default, $invalid, $valid, DbVirtual::ERROR_VALUE_INT);
     }
+
+    public function testChar()
+    {
+        $len = rand(32, 50);
+        $default = $this->randValue(16);
+        $invalid = [];
+        for ($i = rand(5, 6); $i > 1; $i--)
+            $invalid[] = $this->randValue($len + $i );
+
+        $valid = [$default, 0, 1, $this->randValue($len)];
+
+        $this->validateType("char($len)", $default, $invalid, $valid, DbVirtual::ERROR_VALUE_CHAR);
+    }
+
 
     public function testFloat()
     {

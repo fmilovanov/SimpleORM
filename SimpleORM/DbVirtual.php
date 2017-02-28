@@ -18,13 +18,15 @@ class DbVirtual implements IDbAdapter
     const ERROR_TRANSACTION     = 'already in transaction';
     const ERROR_NO_TRANSACTION  = 'no transaction started';
 
-    const ERROR_VALUE_NULL      = '`$s` can not be null';
-    const ERROR_VALUE_NO_DEFAULT= '`$s` does not have default value';
-    const ERROR_VALUE_INT       = '`$s` is not an int';
-    const ERROR_VALUE_FLOAT     = '`$s` is not an float';
-    const ERROR_VALUE_ENUM      = '`$s` has invalid value';
-    const ERROR_VALUE_DATE      = '`$s` is not a valid date';
-    const ERROR_VALUE_DATETIME  = '`$s` is not a valid datetime';
+    const ERROR_VALUE_NULL          = '`$s` can not be null';
+    const ERROR_VALUE_NOT_SCALAR    = '`$s` is not a scalar';
+    const ERROR_VALUE_NO_DEFAULT    = '`$s` does not have default value';
+    const ERROR_VALUE_INT           = '`$s` is not an int';
+    const ERROR_VALUE_CHAR          = '`$s` is too long';
+    const ERROR_VALUE_FLOAT         = '`$s` is not an float';
+    const ERROR_VALUE_ENUM          = '`$s` has invalid value';
+    const ERROR_VALUE_DATE          = '`$s` is not a valid date';
+    const ERROR_VALUE_DATETIME      = '`$s` is not a valid datetime';
 
     const DEFAULT_CTS           = 'CURRENT_TIMESTAMP';
 
@@ -80,13 +82,18 @@ class DbVirtual implements IDbAdapter
 
 
             if (!is_scalar($value))
-                throw new \Exception("`$key` is not scalar");
+                $this->_throw(self::ERROR_VALUE_NOT_SCALAR, $key);
 
             switch ($table[$key]->type)
             {
                 case self::TYPE_INT:
                     if (!is_int($value) && !preg_match('/^[-+]?\d+$/', $value))
                         $this->_throw(self::ERROR_VALUE_INT, $key);
+                    break;
+
+                case self::TYPE_CHAR:
+                    if (strlen($value) > $field->len)
+                        $this->_throw(self::ERROR_VALUE_CHAR, $key);
                     break;
 
                 case self::TYPE_FLOAT:

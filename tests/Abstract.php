@@ -13,6 +13,6 @@ abstract class Test_Abstract extends PHPUnit_Framework_TestCase
 {
     protected function randValue($len = 32)
     {
-        return substr(sha1(microtime(true) . rand(0, 9999999999)), 0, $len);
+        return substr(hash('sha256',  microtime(true) . rand(0, 9999999999)), 0, $len);
     }
 }
