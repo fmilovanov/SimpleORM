@@ -55,6 +55,11 @@ class DbVirtual implements IDbAdapter
         throw new Exception($str);
     }
 
+    private function _throwPdo()
+    {
+        throw new \PDOException(call_user_func_array('sprintf', func_get_args()));
+    }
+
     private function _validate($table, array &$data, $populate= false)
     {
         if (!array_key_exists($table, $this->_table_def))
@@ -153,7 +158,7 @@ class DbVirtual implements IDbAdapter
                 foreach ($field->fk as $ref => $def)
                 {
                     if (!$this->_simpleMatch($def[0], [$def[1] => $value]))
-                        $this->_throw(self::ERROR_FOREIGN_KEY_CHILD, $table, $ref, $key, $def[0], $def[1]);
+                        $this->_throwPdo(self::ERROR_FOREIGN_KEY_CHILD, $table, $ref, $key, $def[0], $def[1]);
                 }
             }
 
@@ -207,7 +212,34 @@ class DbVirtual implements IDbAdapter
     {
         $this->_validate($table, $data);
 
-        foreach ($this->_simpleMatch($table, $where) as $id)
+        $ids = $this->_simpleMatch($table, $where);
+
+        // check if there are references
+        if (isset($this->_table_def[$table]))
+        {
+            $table_def = $this->_table_def[$table];
+
+            foreach ($ids as $id)
+            {
+                foreach ($data as $key => $value)
+                {
+                    if (!property_exists($table_def[$key], 'ref'))
+                        continue;
+
+                    if ($value == $this->tables[$table][$id][$key])
+                        continue;
+
+                    foreach ($table_def[$key]->ref as $ref => $def)
+                    {
+                        $refs = $this->_simpleMatch($def[0], [$def[1] => $this->tables[$table][$id][$key]]);
+                        if ($this->_simpleMatch($def[0], [$def[1] => $this->tables[$table][$id][$key]]))
+                            $this->_throwPdo(self::ERROR_FOREIGN_KEY_PARENT, $table, $ref, $key, $def[0], $def[1]);
+                    }
+                }
+            }
+        }
+
+        foreach ($ids as $id)
         {
             foreach ($data as $key => $value)
             {
@@ -216,9 +248,40 @@ class DbVirtual implements IDbAdapter
         }
     }
 
+    private function _findReferences($table, $data)
+    {
+        if (!isset($this->_table_def[$table]))
+            return false;
+
+        $table_def = $this->_table_def[$table];
+        foreach ($data as $key => $value)
+        {
+            if (!isset($table_def[$key]))
+                continue;
+
+            if (!property_exists($table_def[$key], 'ref'))
+                continue;
+
+            foreach ($table_def[$key]->ref as $ref => $def)
+            {
+                if ($this->_simpleMatch($def[0], [$def[1] => $value]))
+                    $this->_throwPdo(self::ERROR_FOREIGN_KEY_PARENT, $table, $ref, $key, $def[0], $def[1]);
+            }
+        }
+
+        return false;
+
+    }
+
     public function delete($table, array $where, $allow_delete_all = false)
     {
-        foreach ($this->_simpleMatch($table, $where) as $id)
+        $ids = $this->_simpleMatch($table, $where);
+        foreach ($ids as $id)
+        {
+            $this->_findReferences($table, $this->tables[$table][$id]);
+        }
+
+        foreach ($ids as $id)
         {
             unset($this->tables[$table][$id]);
         }

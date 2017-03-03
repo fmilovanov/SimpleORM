@@ -604,13 +604,13 @@ class Test_DbVirtualMySQL extends Test_Abstract
         $this->assertEquals([$ref => [$table2, $key2]], $def1[$key1]->ref);
 
         // try to insert w/out a ref
-        $value1 = rand(1000, 4999);
+        $value1 = rand(1000, 1999);
         try
         {
             $db->insert($table2, [$key2 => $value1]);
             $this->fail();
         }
-        catch (\Exception $e)
+        catch (\PDOException $e)
         {
             $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_CHILD, $table2, $ref, $key2, $table1, $key1);
             $this->assertEquals($error, $e->getMessage());
@@ -618,18 +618,18 @@ class Test_DbVirtualMySQL extends Test_Abstract
 
         // insert ref
         $db->insert($table1, [$key1 => $value1]);
-        $id1 = $db->lastInsertId();
+        $id11 = $db->lastInsertId();
         $db->insert($table2, [$key2 => $value1]);
-        $id2 = $db->lastInsertId();
+        $id21 = $db->lastInsertId();
 
         // try to update to an empty ref
-        $value2 = rand(5000, 5999);
+        $value2 = rand(2000, 2999);
         try
         {
-            $db->update($table2, [$key2 => $value2], ['id' => $id2]);
+            $db->update($table2, [$key2 => $value2], ['id' => $id21]);
             $this->fail();
         }
-        catch (\Exception $e)
+        catch (\PDOException $e)
         {
             $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_CHILD, $table2, $ref, $key2, $table1, $key1);
             $this->assertEquals($error, $e->getMessage());
@@ -637,10 +637,39 @@ class Test_DbVirtualMySQL extends Test_Abstract
 
         // insert another ref value
         $db->insert($table1, [$key1 => $value2]);
-        $db->update($table2, [$key2 => $value2], ['id' => $id2]);
+        $id12 = $db->lastInsertId();
+        $db->update($table2, [$key2 => $value2], ['id' => $id21]);
 
-        // update 
+        // update wrong record of parent table
+        $value3 = rand(3000, 3999);
+        try
+        {
+            $db->update($table1, [$key1 => $value3], ['id' => $id12]);
+            $this->fail();
+        }
+        catch (\PDOException $e)
+        {
+            $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_PARENT, $table1, $ref, $key1, $table2, $key2);
+            $this->assertEquals($error, $e->getMessage());
+        }
+
+        // update child table
+        $db->update($table2, [$key2 => $value1], ['id' => $id21]);
+        $db->update($table1, [$key1 => $value3], ['id' => $id12]);
+
+        // delete a row in parent table
+        $db->delete($table1, ['id' => $id12]);
+        try
+        {
+            $db->delete($table1, ['id' => $id11]);
+            $this->fail();
+        }
+        catch (\PDOException $e)
+        {
+            $error = sprintf(DbVirtual::ERROR_FOREIGN_KEY_PARENT, $table1, $ref, $key1, $table2, $key2);
+            $this->assertEquals($error, $e->getMessage());
+        }
+        
     }
-
 
 }
